@@ -39,7 +39,7 @@ services:
       - key: PUPPETEER_HEADLESS
         value: "true"
       - key: PUPPETEER_ARGS
-        value: "--no-sandbox,--disable-setuid-sandbox"
+        value: "--no-sandbox,--disable-setuid-sandbox,--ignore-certificate-errors"
 
       # Timeout
       - key: LOGIN_TIMEOUT_MS
@@ -56,3 +56,5 @@ services:
         value: brd-customer-hl_68fd24b8-zone-residential_proxy1
       - key: PROXY_PASS
         value: 68hr2c9qdf2v
+      
+

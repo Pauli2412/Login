@@ -43,10 +43,11 @@ async function launchBrowser() {
   }
 
   const browser = await puppeteer.launch({
-    headless: getEnv('PUPPETEER_HEADLESS').toLowerCase() !== 'false',
-    args,
-    defaultViewport: null,
-  });
+  headless: getEnv('PUPPETEER_HEADLESS').toLowerCase() !== 'false',
+  args,
+  defaultViewport: null,
+  ignoreHTTPSErrors: true,   // 👈 esto
+});
 
   const page = await newPage(browser);
   return { browser, page };
