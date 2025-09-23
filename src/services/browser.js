@@ -26,8 +26,6 @@ function buildProxyArg() {
   return null;
 }
 
-
-
 async function launchBrowser() {
   const baseArgs = getEnv('PUPPETEER_ARGS')
     .split(',')
@@ -44,11 +42,11 @@ async function launchBrowser() {
   }
 
   const browser = await puppeteer.launch({
-    headless: getEnv('PUPPETEER_HEADLESS').toLowerCase() !== 'false',
-    args,
-    defaultViewport: null,
-    ignoreHTTPSErrors: true,   // 👈 esto
-  });
+  headless: true,
+  args: [...args, '--disable-http2', '--disable-features=NetworkService'],
+  ignoreHTTPSErrors: true,
+});
+
 
   const page = await newPage(browser);
   return { browser, page };

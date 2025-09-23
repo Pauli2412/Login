@@ -49,7 +49,7 @@ services:
       - key: PROXY_PROTOCOL
         value: https
       - key: PROXY_HOST
-        value: gate.decodo.com
+        value: ar.decodo.com
       - key: PROXY_PORT
         value: "10001"
       - key: PROXY_USER
