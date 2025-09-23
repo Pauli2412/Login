@@ -49,12 +49,12 @@ services:
       - key: PROXY_PROTOCOL
         value: http
       - key: PROXY_HOST
-        value: brd.superproxy.io
+        value: gate.decodo.com
       - key: PROXY_PORT
-        value: "33335"
+        value: "10001"
       - key: PROXY_USER
-        value: brd-customer-hl_68fd24b8-zone-residential_proxy1
+         value: user-spa48guig0-asn-7303
       - key: PROXY_PASS
-        value: 68hr2c9qdf2v
-      
+        value: gxpQe=6o9bUsF3nAn4
+
 
