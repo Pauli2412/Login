@@ -67,5 +67,22 @@ router.get("/test-auth", async (req, res) => {
   }
 });
 
+router.get("/test-ip", async (req, res) => {
+  let browser;
+  try {
+    const { browser: b, page } = await launchBrowser();
+    browser = b;
+
+    await page.goto('https://api.myip.com', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    const data = await page.evaluate(() => document.body.innerText);
+
+    res.json({ ok: true, ipInfo: JSON.parse(data) });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+  }
+});
+
 
 module.exports = router;
