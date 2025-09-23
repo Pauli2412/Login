@@ -3,7 +3,7 @@ const router = express.Router();
 const { doLoginOne, doLoginAll, getSessionFor, keepAlive } = require('../services/loginService');
 const { listSheets, readConfPlataformas, testAuth } = require("../services/sheetsConfig"); 
 const logger = require('../utils/logger');
-
+const { launchBrowser } = require('../services/browser');  
 
 
 router.get('/health', (_req, res) => res.json({ ok: true, service: 'ms-login' }));
