@@ -1,0 +1,31 @@
+{
+  "name": "login",
+  "version": "1.0.0",
+  "description": "Mantiene sesiones abiertas en Aguante, Playbet, Gabamos, Buffalo leyendo config desde Google Sheets",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Infinity-ARG/Login.git"
+  },
+  "author": "Isabel Chalco",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Infinity-ARG/Login/issues"
+  },
+  "homepage": "https://github.com/Infinity-ARG/Login#readme",
+  "dependencies": {
+    "dotenv": "^17.2.2",
+    "express": "^5.1.0",
+    "google-auth-library": "^8.9.0",
+    "googleapis": "^105.0.0",
+    "node-cron": "^4.2.1",
+    "nodemon": "^3.1.10",
+    "pino": "^9.11.0",
+    "puppeteer": "^24.22.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  }
+}
