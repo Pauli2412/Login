@@ -8,19 +8,12 @@ function buildProxyArg() {
   const proto = (process.env.PROXY_PROTOCOL || '').trim();
   const host  = (process.env.PROXY_HOST || '').trim();
   const port  = (process.env.PROXY_PORT || '').trim();
-  const user  = (process.env.PROXY_USER || '').trim();
-  const pass  = (process.env.PROXY_PASS || '').trim();
 
-  if (proto && host && port && user && pass) {
-    return `--proxy-server=${proto}://${user}:${pass}@${host}:${port}`;
-  }
   if (proto && host && port) {
     return `--proxy-server=${proto}://${host}:${port}`;
   }
-  return null;
+  return null; 
 }
-
-
 
 async function launchBrowser() {
   const baseArgs = (process.env.PUPPETEER_ARGS || '')
@@ -43,24 +36,23 @@ async function launchBrowser() {
     defaultViewport: null,
   });
 
-    const page = await newPage(browser);
+  const page = await newPage(browser);
 
-  return { browser, page }; 
-  
-
+  return { browser, page };
 }
 
 async function newPage(browser) {
   const page = await browser.newPage();
 
-  // Proxy auth si aplica
+  // Proxy auth con Smartproxy
   const user = (process.env.PROXY_USER || '').trim();
   const pass = (process.env.PROXY_PASS || '').trim();
   if (user && pass) {
+    console.log("🔐 Autenticando proxy con usuario/clave");
     await page.authenticate({ username: user, password: pass });
   }
 
-  // User-Agent
+  // User-Agent realista
   await page.setUserAgent(
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123 Safari/537.36'
   );
@@ -71,7 +63,7 @@ async function newPage(browser) {
     'Upgrade-Insecure-Requests': '1',
   });
 
-  // Configurar idioma para que parezca navegador real
+  // Idioma "humano"
   await page.evaluateOnNewDocument(() => {
     Object.defineProperty(navigator, 'language', { get: () => 'es-ES' });
     Object.defineProperty(navigator, 'languages', { get: () => ['es-ES', 'es'] });
