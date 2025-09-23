@@ -88,7 +88,6 @@ router.get("/test-ip", async (req, res) => {
 });
 
 router.get('/debug-proxy', async (_req, res) => {
-  // leemos env ya “como llegan”
   const raw = {
     PROXY_PROTOCOL: process.env.PROXY_PROTOCOL,
     PROXY_HOST: process.env.PROXY_HOST,
@@ -103,8 +102,11 @@ router.get('/debug-proxy', async (_req, res) => {
     const { browser: b, page } = await launchBrowser();
     browser = b;
 
-    // chequeo real de IP saliente via proxy
-    await page.goto('https://ipinfo.io/json', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    await page.goto('https://geo.brdtest.com/mygeo.json', {
+      waitUntil: 'domcontentloaded',
+      timeout: 20000
+    });
+
     const txt = await page.evaluate(() => document.body.innerText);
     let ipJson;
     try {
@@ -117,9 +119,10 @@ router.get('/debug-proxy', async (_req, res) => {
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message, envRaw: raw });
   } finally {
-    if (browser) await browser.close().catch(() => { });
+    if (browser) await browser.close().catch(() => {});
   }
 });
+
 
 
 module.exports = router;
