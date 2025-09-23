@@ -16,15 +16,16 @@ function getEnv(key, def = '') {
 }
 
 function buildProxyArg() {
-  const proto = getEnv('PROXY_PROTOCOL');   // ej: http
-  const host  = getEnv('PROXY_HOST');       // ej: gate.smartproxy.com
-  const port  = getEnv('PROXY_PORT');       // ej: 10000
+  const proto = getEnv('PROXY_PROTOCOL');   // http
+  const host  = getEnv('PROXY_HOST');       // brd.superproxy.io
+  const port  = getEnv('PROXY_PORT');       // 33335
 
   if (proto && host && port) {
     return `--proxy-server=${proto}://${host}:${port}`;
   }
-  return null; // sin proxy
+  return null;
 }
+
 
 async function launchBrowser() {
   const baseArgs = getEnv('PUPPETEER_ARGS')

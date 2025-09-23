@@ -2,7 +2,7 @@ services:
   - type: web
     name: ms-login
     env: node
-    plan: free        # podés usar "starter" o "standard" si necesitás más recursos
+    plan: free
     buildCommand: npm install
     startCommand: node src/app.js
     envVars:
@@ -31,7 +31,7 @@ services:
       - key: CONF_COL_PASS
         value: CONTRASEÑA
 
-      # Cron de keepalive (cada 10 min)
+      # Cron de keepalive
       - key: KEEPALIVE_CRON
         value: "*/10 * * * *"
 
@@ -41,6 +41,18 @@ services:
       - key: PUPPETEER_ARGS
         value: "--no-sandbox,--disable-setuid-sandbox"
 
-      # Timeout máximo para login
+      # Timeout
       - key: LOGIN_TIMEOUT_MS
         value: "30000"
+
+      # Bright Data Proxy
+      - key: PROXY_PROTOCOL
+        value: http
+      - key: PROXY_HOST
+        value: brd.superproxy.io
+      - key: PROXY_PORT
+        value: "33335"
+      - key: PROXY_USER
+        value: brd-customer-hl_68fd24b8-zone-residential_proxy1
+      - key: PROXY_PASS
+        value: 68hr2c9qdf2v
