@@ -75,7 +75,7 @@ router.get("/test-ip", async (req, res) => {
     browser = b;
 
     // Usa un servicio alternativo que devuelva JSON válido
-    await page.goto('https://api.myip.com', { waitUntil: 'networkidle2' });
+    await page.goto('https://api.myip.com', { waitUntil: 'domcontentloaded' });
     const body = await page.evaluate(() => document.body.innerText);
     res.json({ ok: true, ipInfo: JSON.parse(body) });
   } catch (err) {
