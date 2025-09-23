@@ -20,7 +20,7 @@ function buildProxyArg() {
   const port = getEnv('PROXY_PORT');       // ej: 10001
 
   if (host && port) {
-    return `--proxy-server=http://ar.decodo.com:10001`;
+    return `--proxy-server=https://${host}:${port}`;
 
   }
   return null;
@@ -44,11 +44,11 @@ async function launchBrowser() {
   }
 
   const browser = await puppeteer.launch({
-  headless: getEnv('PUPPETEER_HEADLESS').toLowerCase() !== 'false',
-  args,
-  defaultViewport: null,
-  ignoreHTTPSErrors: true,   // 👈 esto
-});
+    headless: getEnv('PUPPETEER_HEADLESS').toLowerCase() !== 'false',
+    args,
+    defaultViewport: null,
+    ignoreHTTPSErrors: true,   // 👈 esto
+  });
 
   const page = await newPage(browser);
   return { browser, page };

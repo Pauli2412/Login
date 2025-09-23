@@ -47,13 +47,13 @@ services:
 
       # Bright Data Proxy
       - key: PROXY_PROTOCOL
-        value: http
+        value: https
       - key: PROXY_HOST
         value: gate.decodo.com
       - key: PROXY_PORT
         value: "10001"
       - key: PROXY_USER
-        value: user-spa48guig0-asn-7303
+        value: user-spa48guig0-asn-7303-ses-test
       - key: PROXY_PASS
         value: gxpQe=6o9bUsF3nAn4
 
