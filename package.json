@@ -4,6 +4,7 @@
   "description": "Mantiene sesiones abiertas en Aguante, Playbet, Gabamos, Buffalo leyendo config desde Google Sheets",
   "main": "index.js",
   "scripts": {
+    "start": "node src/app.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
