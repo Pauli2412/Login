@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: ms-login
+    env: node
+    plan: free        # podés usar "starter" o "standard" si necesitás más recursos
+    buildCommand: npm install
+    startCommand: node src/app.js
+    envVars:
+      - key: PORT
+        value: 4002
+
+      # Google Sheets
+      - key: GOOGLE_SHEET_ID
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_EMAIL
+        sync: false
+      - key: GOOGLE_PRIVATE_KEY
+        sync: false
+
+      # Configuración de hojas
+      - key: CONF_SHEET_NAME
+        value: ConfPlataformas
+      - key: SHEETS_NEW
+        value: NuevosUsuarios
+      - key: CONF_COL_PLATAFORMA
+        value: PLATAFORMA
+      - key: CONF_COL_URL_LOGIN
+        value: URL
+      - key: CONF_COL_USER
+        value: USUARIO
+      - key: CONF_COL_PASS
+        value: CONTRASEÑA
+
+      # Cron de keepalive (cada 10 min)
+      - key: KEEPALIVE_CRON
+        value: "*/10 * * * *"
+
+      # Puppeteer
+      - key: PUPPETEER_HEADLESS
+        value: "true"
+      - key: PUPPETEER_ARGS
+        value: "--no-sandbox,--disable-setuid-sandbox"
+
+      # Timeout máximo para login
+      - key: LOGIN_TIMEOUT_MS
+        value: "30000"
