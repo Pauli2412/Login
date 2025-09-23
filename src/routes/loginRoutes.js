@@ -6,6 +6,7 @@ const logger = require('../utils/logger');
 const { launchBrowser } = require('../services/browser');  
 
 
+
 router.get('/health', (_req, res) => res.json({ ok: true, service: 'ms-login' }));
 
 // Forzar login de una o todas
@@ -85,7 +86,6 @@ router.get("/test-ip", async (req, res) => {
   }
 });
 
-const { launchBrowser } = require('../services/browser');
 
 router.get('/debug-proxy', async (_req, res) => {
   // leemos env ya “como llegan”
