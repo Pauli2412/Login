@@ -53,7 +53,7 @@ services:
       - key: PROXY_PORT
         value: "10001"
       - key: PROXY_USER
-         value: user-spa48guig0-asn-7303
+        value: user-spa48guig0-asn-7303
       - key: PROXY_PASS
         value: gxpQe=6o9bUsF3nAn4
 

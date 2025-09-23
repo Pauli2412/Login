@@ -20,7 +20,8 @@ function buildProxyArg() {
   const port = getEnv('PROXY_PORT');       // ej: 10001
 
   if (host && port) {
-    return `--proxy-server=${host}:${port}`;
+    return `--proxy-server=http://ar.decodo.com:10001`;
+
   }
   return null;
 }
