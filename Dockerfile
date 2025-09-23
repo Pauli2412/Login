@@ -15,7 +15,6 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY src ./src
-COPY .env ./.env
 
 ENV NODE_ENV=production \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
