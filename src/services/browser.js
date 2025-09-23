@@ -16,15 +16,15 @@ function getEnv(key, def = '') {
 }
 
 function buildProxyArg() {
-  const proto = getEnv('PROXY_PROTOCOL');   // http
-  const host  = getEnv('PROXY_HOST');       // brd.superproxy.io
-  const port  = getEnv('PROXY_PORT');       // 33335
+  const host = getEnv('PROXY_HOST');       // ej: gate.decodo.com
+  const port = getEnv('PROXY_PORT');       // ej: 10001
 
-  if (proto && host && port) {
-    return `--proxy-server=${proto}://${host}:${port}`;
+  if (host && port) {
+    return `--proxy-server=${host}:${port}`;
   }
   return null;
 }
+
 
 
 async function launchBrowser() {
