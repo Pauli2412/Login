@@ -101,11 +101,10 @@ router.get('/debug-proxy', async (_req, res) => {
     const { browser: b, page } = await launchBrowser();
     browser = b;
 
-    await page.goto('http://ip-api.com/json', {
+    await page.goto('https://api.myip.com', {
       waitUntil: 'domcontentloaded',
       timeout: 20000
     });
-
     const txt = await page.evaluate(() => document.body.innerText);
     let ipJson;
     try {
@@ -113,7 +112,6 @@ router.get('/debug-proxy', async (_req, res) => {
     } catch {
       ipJson = { raw: txt.slice(0, 400) };
     }
-
     res.json({ ok: true, envRaw: raw, ipInfo: ipJson });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message, envRaw: raw });
