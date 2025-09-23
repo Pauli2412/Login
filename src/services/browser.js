@@ -8,12 +8,20 @@ function buildProxyArg() {
   const proto = (process.env.PROXY_PROTOCOL || '').trim();
   const host  = (process.env.PROXY_HOST || '').trim();
   const port  = (process.env.PROXY_PORT || '').trim();
+  const user  = (process.env.PROXY_USER || '').trim();
+  const pass  = (process.env.PROXY_PASS || '').trim();
 
+  if (proto && host && port && user && pass) {
+    // proxy con auth inline
+    return `--proxy-server=${proto}://${user}:${pass}@${host}:${port}`;
+  }
   if (proto && host && port) {
+    // proxy sin auth
     return `--proxy-server=${proto}://${host}:${port}`;
   }
-  return null; // 👉 si falta algo, no usamos proxy
+  return null;
 }
+
 
 async function launchBrowser() {
   const baseArgs = (process.env.PUPPETEER_ARGS || '')
@@ -49,9 +57,6 @@ async function newPage(browser) {
   // Proxy auth si aplica
   const user = (process.env.PROXY_USER || '').trim();
   const pass = (process.env.PROXY_PASS || '').trim();
-  if (user && pass) {
-    await page.authenticate({ username: user, password: pass });
-  }
 
   // User-Agent
   await page.setUserAgent(
