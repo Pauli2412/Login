@@ -10,11 +10,16 @@ class Ganamos extends Base {
   async login(page, { urlLogin, user, pass }) {
     console.log("[Ganamos] Navegando a:", urlLogin);
 
-    // Capturar requests y respuestas para debug
+    // Capturar respuestas para debug
     page.on('response', async (res) => {
       if (res.url().includes('ganamos')) {
         console.log(`[Ganamos][RESP] ${res.status()} ${res.url()}`);
       }
+    });
+
+    // Capturar requests fallidos
+    page.on('requestfailed', (req) => {
+      console.log(`[Ganamos][REQ FAIL] ${req.url()} → ${req.failure()?.errorText}`);
     });
 
     await page.goto(urlLogin, { waitUntil: 'domcontentloaded', timeout: 40000 });
