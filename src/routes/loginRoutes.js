@@ -85,6 +85,41 @@ router.get("/test-ip", async (req, res) => {
   }
 });
 
+const { launchBrowser } = require('../services/browser');
+
+router.get('/debug-proxy', async (_req, res) => {
+  // leemos env ya “como llegan”
+  const raw = {
+    PROXY_PROTOCOL: process.env.PROXY_PROTOCOL,
+    PROXY_HOST: process.env.PROXY_HOST,
+    PROXY_PORT: process.env.PROXY_PORT,
+    PROXY_USER: process.env.PROXY_USER,
+    PROXY_PASS_len: (process.env.PROXY_PASS || '').length,
+    PUPPETEER_ARGS: process.env.PUPPETEER_ARGS,
+  };
+
+  let browser;
+  try {
+    const { browser: b, page } = await launchBrowser();
+    browser = b;
+
+    // chequeo real de IP saliente via proxy
+    await page.goto('https://ipinfo.io/json', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    const txt = await page.evaluate(() => document.body.innerText);
+    let ipJson;
+    try {
+      ipJson = JSON.parse(txt);
+    } catch {
+      ipJson = { raw: txt.slice(0, 400) };
+    }
+
+    res.json({ ok: true, envRaw: raw, ipInfo: ipJson });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message, envRaw: raw });
+  } finally {
+    if (browser) await browser.close().catch(() => {});
+  }
+});
 
 
 module.exports = router;
