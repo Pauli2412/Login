@@ -73,7 +73,8 @@ router.get("/test-ip", async (req, res) => {
     const { browser: b, page } = await launchBrowser();
     browser = b;
 
-    await page.goto('https://api.myip.com', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    // Usa un servicio alternativo que devuelva JSON válido
+    await page.goto('https://ipinfo.io/json', { waitUntil: 'domcontentloaded', timeout: 20000 });
     const data = await page.evaluate(() => document.body.innerText);
 
     res.json({ ok: true, ipInfo: JSON.parse(data) });
@@ -83,6 +84,7 @@ router.get("/test-ip", async (req, res) => {
     if (browser) await browser.close().catch(() => {});
   }
 });
+
 
 
 module.exports = router;
