@@ -5,20 +5,21 @@ class Playbet extends Base {
     super({ name: 'Playbet' });
   }
 
-  async login(page, { urlLogin, user, pass }) {
-  await page.goto(urlLogin, { waitUntil: 'domcontentloaded' });
+  // src/services/platform/playbet.js
+async login(page, { urlLogin, user, pass }) {
+  await page.goto(urlLogin, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-  await page.waitForSelector('app-login form', { timeout: 30000 });
+  // 🚨 Debug: imprimir el HTML real que Render ve
+  const html = await page.content();
+  console.log("DEBUG HTML:", html.slice(0, 1000)); // primeras 1000 chars
 
-  // Ahora sí: esperar los inputs
-  const userInput = await page.waitForSelector('input[formcontrolname="login"]', { visible: true });
-  const passInput = await page.waitForSelector('input[formcontrolname="password"]', { visible: true });
+  // Ahora intentamos buscar directamente el input
+  const userInput = await page.waitForSelector('input[formcontrolname="login"]', { visible: true, timeout: 30000 });
+  const passInput = await page.waitForSelector('input[formcontrolname="password"]', { visible: true, timeout: 30000 });
 
-  // Escribir valores con "type" para simular usuario real
   await userInput.type(user, { delay: 50 });
   await passInput.type(pass, { delay: 50 });
 
-  // Click en el botón de login
   const loginBtn = await page.$('button[type="submit"]');
   await Promise.all([
     loginBtn.click(),
@@ -27,6 +28,7 @@ class Playbet extends Base {
 
   return true;
 }
+
 
 
   async isLogged(page) {
