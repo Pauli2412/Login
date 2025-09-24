@@ -1,6 +1,10 @@
 // src/services/platform/playbet.js
 const Base = require('./BasePlatform');
 
+function sleep(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
 class Playbet extends Base {
   constructor() {
     super({ name: 'Playbet' });
@@ -9,29 +13,27 @@ class Playbet extends Base {
   async login(page, { urlLogin, user, pass }) {
     await page.goto(urlLogin, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // 🚨 Debug 1: imprimir los primeros 1000 caracteres del HTML
+    // 🚨 Debug HTML y scripts
     const html = await page.content();
     console.log("DEBUG HTML (first 1000 chars):", html.slice(0, 1000));
 
-    // 🚨 Debug 2: listar scripts que se cargan
     const scripts = await page.$$eval("script", els =>
       els.map(e => e.src || e.innerText.slice(0, 80))
     );
     console.log("DEBUG SCRIPTS:", scripts);
 
-    // 🚨 Debug 3: esperar un poco a que Angular monte
-    await page.waitForTimeout(5000);
+    // Esperar un poco para que Angular monte
+    await sleep(8000); // dale tiempo a Angular
 
-    // 🚨 Debug 4: verificar si existe el form
+    // Verificar si existe el form
     const formExists = await page.$('form input[formcontrolname="login"]');
     console.log("DEBUG FORM EXISTS:", !!formExists);
 
-    // Si no existe el form → salimos con error explícito
     if (!formExists) {
-      throw new Error("Formulario de login no cargó (Angular bloqueado o no ejecutado)");
+      throw new Error("Formulario de login no cargó (Angular no montó o está bloqueado)");
     }
 
-    // Continuar con login si el form aparece
+    // Login normal
     const userInput = await page.$('input[formcontrolname="login"]');
     const passInput = await page.$('input[formcontrolname="password"]');
 
