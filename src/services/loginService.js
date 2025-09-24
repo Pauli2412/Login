@@ -36,8 +36,6 @@ async function fetchConfig() {
   }, {});
 }
 
-
-
 async function doLoginOne(platformKey, confByPlatform) {
   const key = platformKey.toLowerCase();
   const adapter = ADAPTERS[key];
@@ -48,16 +46,13 @@ async function doLoginOne(platformKey, confByPlatform) {
     throw new Error(`Faltan credenciales/URL para ${platformKey} en ConfPlataformas`);
   }
 
-  // ⬇️ ahora launchBrowser soporta proxy configurable
-  const { browser, page } = await launchBrowser({
-    proxyServer: process.env.PUPPETEER_PROXY || null,
-    proxyUser: process.env.PUPPETEER_PROXY_USER || null,
-    proxyPass: process.env.PUPPETEER_PROXY_PASS || null,
-  });
+  // Solo Ganamos usa proxy
+  const useProxy = key === 'ganamos';
+
+  const { browser, page } = await launchBrowser({ forceProxy: useProxy });
 
   try {
     await adapter.login(page, creds);
-
     const ok = await adapter.isLogged(page);
     if (!ok) throw new Error(`Login fallido en ${platformKey}`);
 
@@ -67,12 +62,12 @@ async function doLoginOne(platformKey, confByPlatform) {
     );
 
     setSession(platformKey, { cookies, token });
-    logger.info({ platformKey }, 'Login ok y sesión guardada');
     return { ok: true };
   } finally {
     await browser.close().catch(() => {});
   }
 }
+
 
 async function doLoginAll() {
   const confByPlatform = await fetchConfig();

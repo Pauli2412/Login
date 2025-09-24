@@ -15,43 +15,38 @@ function getEnv(key, def = '') {
   return unquote(process.env[key] ?? def);
 }
 
-function buildProxyArg() {
-  const host = getEnv('PROXY_HOST');       // ej: gate.decodo.com
-  const port = getEnv('PROXY_PORT');       // ej: 10001
+function buildProxyArg({ forceProxy = false } = {}) {
+  const proto = getEnv('PROXY_PROTOCOL'); // http/https
+  const host  = getEnv('PROXY_HOST');
+  const port  = getEnv('PROXY_PORT');
 
-  if (host && port) {
-    return `--proxy-server=https://${host}:${port}`;
-
+  if (forceProxy && host && port) {
+    return `--proxy-server=${proto}://${host}:${port}`;
   }
   return null;
 }
 
-async function launchBrowser() {
+async function launchBrowser({ forceProxy = false } = {}) {
   const baseArgs = getEnv('PUPPETEER_ARGS')
     .split(',')
     .map(a => a.trim())
     .filter(Boolean);
 
-  const proxyArg = buildProxyArg();
+  const proxyArg = buildProxyArg({ forceProxy });
   const args = proxyArg ? [...baseArgs, proxyArg] : baseArgs;
 
-  if (proxyArg) {
-    console.log('🌐 Proxy detectado:', proxyArg);
-  } else {
-    console.log('🚀 Sin proxy (conexión directa)');
-  }
+  console.log(proxyArg ? `🌐 Proxy detectado: ${proxyArg}` : '🚀 Sin proxy (conexión directa)');
 
   const browser = await puppeteer.launch({
-  headless: true,
-  args: [...args, '--disable-http2', '--disable-features=NetworkService'],
-  ignoreHTTPSErrors: true,
-});
+    headless: getEnv('PUPPETEER_HEADLESS').toLowerCase() !== 'false',
+    args: [...args, '--disable-http2', '--disable-features=NetworkService'],
+    ignoreHTTPSErrors: true,
+  });
 
-
-  const page = await newPage(browser);
+  const page = await newPage(browser, forceProxy);
   return { browser, page };
 }
-
+  
 async function newPage(browser) {
   const page = await browser.newPage();
 
