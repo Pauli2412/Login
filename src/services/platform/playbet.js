@@ -1,3 +1,4 @@
+// src/services/platform/playbet.js
 const Base = require('./BasePlatform');
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -7,12 +8,11 @@ class Playbet extends Base {
   }
 
   async login(page, { urlLogin, user, pass }) {
-    // Logs de consola y errores de página
+    // Logs de consola y errores
     page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
     page.on('pageerror', err => console.log('BROWSER PAGEERROR:', err.message));
-    
 
-    // Mock básico de storage / permissions
+    // Mock básico de localStorage/sessionStorage
     await page.evaluateOnNewDocument(() => {
       window.localStorage = window.localStorage || {
         getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
@@ -25,6 +25,7 @@ class Playbet extends Base {
       };
     });
 
+    console.log(`[Playbet] Navegando a: ${urlLogin}`);
     await page.goto(urlLogin, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     // Debug inicial
@@ -36,7 +37,7 @@ class Playbet extends Base {
     );
     console.log("DEBUG SCRIPTS:", scripts);
 
-    // Espera larga para Angular (Render es lento)
+    // Espera larga para Angular
     await sleep(12000);
 
     const formExists = await page.$('form input[formcontrolname="login"]');
@@ -70,4 +71,3 @@ class Playbet extends Base {
 }
 
 module.exports = Playbet;
-

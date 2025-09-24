@@ -1,7 +1,11 @@
 // src/services/browser.js
+const path = require("path");
 const puppeteer = require('puppeteer-extra');
 const Stealth = require('puppeteer-extra-plugin-stealth');
-const fullDomainJson = require("./domain.json");
+
+// Carga segura del domain.json completo
+const fullDomainJson = require(path.resolve(__dirname, "domain.json"));
+
 puppeteer.use(Stealth());
 
 function unquote(v) {
@@ -93,7 +97,6 @@ async function newPage(browser) {
         body: JSON.stringify(fullDomainJson),
       });
     }
-
 
     const rtype = req.resourceType();
     if (rtype === 'image' || rtype === 'media' || rtype === 'font') return req.abort();
