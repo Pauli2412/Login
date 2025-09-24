@@ -1,7 +1,7 @@
 // src/services/browser.js
 const puppeteer = require('puppeteer-extra');
 const Stealth = require('puppeteer-extra-plugin-stealth');
-
+const fullDomainJson = require("./domain.json");
 puppeteer.use(Stealth());
 
 function unquote(v) {
@@ -86,41 +86,11 @@ async function newPage(browser) {
 
     // Mock para domain.json
     if (url.includes("assets/domain.json")) {
-      console.log("⚡ Interceptando domain.json → devolviendo mock válido");
+      console.log("⚡ Interceptando domain.json → devolviendo JSON completo");
       return req.respond({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify([
-          {
-            "hostName": "agent.play.bet.ar",
-            "siteName": "play",
-            "siteId": "prode",
-            "siteUrl": "https://play.bet.ar",
-            "favIcon": "https://play.bet.ar/assets/website/palybet.ico",
-            "logo": "https://play.bet.ar/assets/website/playbet_logo.png",
-            "currency": "ARS",
-            "currencyFormat": "es-AR",
-            "title": "Playbet",
-            "liveChat": false,
-            "bgColor": "#000",
-            "Amount": [100, 1000, 10000]
-          },
-          {
-            // 🚨 además incluimos al menos otro objeto para que filter no rompa
-            "hostName": "localhost",
-            "siteName": "dummy",
-            "siteId": "dummy",
-            "siteUrl": "https://localhost",
-            "favIcon": "",
-            "logo": "",
-            "currency": "ARS",
-            "currencyFormat": "es-AR",
-            "title": "Dummy",
-            "liveChat": false,
-            "bgColor": "#000",
-            "Amount": [100]
-          }
-        ]),
+        body: JSON.stringify(fullDomainJson),
       });
     }
 
