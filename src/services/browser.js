@@ -1,3 +1,4 @@
+// src/services/browser.js
 const puppeteer = require('puppeteer-extra');
 const Stealth = require('puppeteer-extra-plugin-stealth');
 
@@ -55,6 +56,7 @@ async function launchBrowser({ forceProxy = false } = {}) {
 async function newPage(browser) {
   const page = await browser.newPage();
 
+  // Proxy auth si aplica
   const user = getEnv('PROXY_USER');
   const pass = getEnv('PROXY_PASS');
   if (user && pass) {
@@ -77,8 +79,24 @@ async function newPage(browser) {
 
   await page.setViewport({ width: 1366, height: 768, deviceScaleFactor: 1 });
 
+  // 🚨 Interceptamos requests
   await page.setRequestInterception(true);
   page.on('request', (req) => {
+    const url = req.url();
+
+    // Mock para domain.json
+    if (url.includes("assets/domain.json")) {
+      console.log("⚡ Interceptando domain.json → devolviendo mock");
+      return req.respond({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          domain: "https://agent.play.bet.ar",
+          env: "prod"
+        }),
+      });
+    }
+
     const rtype = req.resourceType();
     if (rtype === 'image' || rtype === 'media' || rtype === 'font') return req.abort();
     req.continue();

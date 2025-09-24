@@ -1,8 +1,5 @@
 const Base = require('./BasePlatform');
-
-function sleep(ms) {
-  return new Promise(r => setTimeout(r, ms));
-}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 class Playbet extends Base {
   constructor() {
@@ -10,14 +7,26 @@ class Playbet extends Base {
   }
 
   async login(page, { urlLogin, user, pass }) {
-    // Log de errores de consola para debug Angular
-    page.on('console', msg => {
-      console.log('BROWSER CONSOLE:', msg.type(), msg.text());
+    // Logs de consola y errores de página
+    page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
+    page.on('pageerror', err => console.log('BROWSER PAGEERROR:', err.message));
+
+    // Mock básico de storage / permissions
+    await page.evaluateOnNewDocument(() => {
+      window.localStorage = window.localStorage || {
+        getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
+      };
+      window.sessionStorage = window.sessionStorage || {
+        getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
+      };
+      navigator.permissions = {
+        query: async () => ({ state: 'granted' })
+      };
     });
 
     await page.goto(urlLogin, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // 🚨 Debug HTML y scripts
+    // Debug inicial
     const html = await page.content();
     console.log("DEBUG HTML (first 1000 chars):", html.slice(0, 1000));
 
@@ -26,18 +35,19 @@ class Playbet extends Base {
     );
     console.log("DEBUG SCRIPTS:", scripts);
 
-    // Esperar un poco para que Angular monte
-    await sleep(8000);
+    // Espera larga para Angular (Render es lento)
+    await sleep(12000);
 
-    // Verificar si existe el form
     const formExists = await page.$('form input[formcontrolname="login"]');
     console.log("DEBUG FORM EXISTS:", !!formExists);
 
     if (!formExists) {
+      const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
+      console.log("DEBUG SCREENSHOT (base64, first 500 chars):", screenshot.slice(0, 500));
       throw new Error("Formulario de login no cargó (Angular no montó o está bloqueado)");
     }
 
-    // Login normal
+    // Completar login
     const userInput = await page.$('input[formcontrolname="login"]');
     const passInput = await page.$('input[formcontrolname="password"]');
 
@@ -59,3 +69,4 @@ class Playbet extends Base {
 }
 
 module.exports = Playbet;
+
