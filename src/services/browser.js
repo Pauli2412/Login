@@ -16,8 +16,8 @@ function getEnv(key, def = '') {
 
 function buildProxyArg({ forceProxy = false } = {}) {
   const proto = getEnv('PROXY_PROTOCOL');
-  const host  = getEnv('PROXY_HOST');
-  const port  = getEnv('PROXY_PORT');
+  const host = getEnv('PROXY_HOST');
+  const port = getEnv('PROXY_PORT');
   if (forceProxy && host && port) {
     return `--proxy-server=${proto}://${host}:${port}`;
   }
@@ -86,14 +86,26 @@ async function newPage(browser) {
 
     // Mock para domain.json
     if (url.includes("assets/domain.json")) {
-      console.log("⚡ Interceptando domain.json → devolviendo mock");
+      console.log("⚡ Interceptando domain.json → devolviendo mock válido");
       return req.respond({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({
-          domain: "https://agent.play.bet.ar",
-          env: "prod"
-        }),
+        body: JSON.stringify([
+          {
+            "hostName": "agent.play.bet.ar",
+            "siteName": "play",
+            "siteId": "prode",
+            "siteUrl": "https://play.bet.ar",
+            "favIcon": "https://play.bet.ar/assets/website/palybet.ico",
+            "logo": "https://play.bet.ar/assets/website/playbet_logo.png",
+            "currency": "ARS",
+            "currencyFormat": "es-AR",
+            "title": "Playbet",
+            "liveChat": false,
+            "bgColor": "#000",
+            "Amount": [100, 1000, 10000]
+          }
+        ]),
       });
     }
 
