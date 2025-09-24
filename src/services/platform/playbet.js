@@ -6,48 +6,28 @@ class Playbet extends Base {
   }
 
   async login(page, { urlLogin, user, pass }) {
-    // Ir al login
-    await page.goto(urlLogin, { waitUntil: 'networkidle2', timeout: 45000 });
+  await page.goto(urlLogin, { waitUntil: 'domcontentloaded' });
 
-    // Esperar hasta que Angular pinte los inputs
-    await page.waitForFunction(() => {
-      return document.querySelector('input[formcontrolname="login"]') &&
-             document.querySelector('input[formcontrolname="password"]');
-    }, { timeout: 20000 });
+  await page.waitForSelector('app-login form', { timeout: 30000 });
 
-    // Forzar Angular binding en login
-    await page.evaluate((val) => {
-      const el = document.querySelector('input[formcontrolname="login"]');
-      el.focus();
-      el.value = val;
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    }, user);
+  // Ahora sí: esperar los inputs
+  const userInput = await page.waitForSelector('input[formcontrolname="login"]', { visible: true });
+  const passInput = await page.waitForSelector('input[formcontrolname="password"]', { visible: true });
 
-    // Forzar Angular binding en password
-    await page.evaluate((val) => {
-      const el = document.querySelector('input[formcontrolname="password"]');
-      el.focus();
-      el.value = val;
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    }, pass);
+  // Escribir valores con "type" para simular usuario real
+  await userInput.type(user, { delay: 50 });
+  await passInput.type(pass, { delay: 50 });
 
-    // Habilitar botón si Angular lo dejó disabled
-    await page.evaluate(() => {
-      const btn = document.querySelector('button[type="submit"]');
-      if (btn && btn.hasAttribute('disabled')) btn.removeAttribute('disabled');
-    });
+  // Click en el botón de login
+  const loginBtn = await page.$('button[type="submit"]');
+  await Promise.all([
+    loginBtn.click(),
+    page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(() => {})
+  ]);
 
-    // Click y esperar redirección
-    const loginBtn = await page.$('button[type="submit"]');
-    await Promise.all([
-      loginBtn.click(),
-      page.waitForNavigation({ waitUntil: 'networkidle2', timeout: 30000 }).catch(() => {})
-    ]);
+  return true;
+}
 
-    return true;
-  }
 
   async isLogged(page) {
     // Buscar logout o panel principal
