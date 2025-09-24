@@ -10,6 +10,7 @@ class Playbet extends Base {
     // Logs de consola y errores de página
     page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
     page.on('pageerror', err => console.log('BROWSER PAGEERROR:', err.message));
+    
 
     // Mock básico de storage / permissions
     await page.evaluateOnNewDocument(() => {

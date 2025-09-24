@@ -104,10 +104,26 @@ async function newPage(browser) {
             "liveChat": false,
             "bgColor": "#000",
             "Amount": [100, 1000, 10000]
+          },
+          {
+            // 🚨 además incluimos al menos otro objeto para que filter no rompa
+            "hostName": "localhost",
+            "siteName": "dummy",
+            "siteId": "dummy",
+            "siteUrl": "https://localhost",
+            "favIcon": "",
+            "logo": "",
+            "currency": "ARS",
+            "currencyFormat": "es-AR",
+            "title": "Dummy",
+            "liveChat": false,
+            "bgColor": "#000",
+            "Amount": [100]
           }
         ]),
       });
     }
+
 
     const rtype = req.resourceType();
     if (rtype === 'image' || rtype === 'media' || rtype === 'font') return req.abort();
