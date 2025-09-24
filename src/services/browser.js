@@ -1,4 +1,3 @@
-// src/services/browser.js
 const puppeteer = require('puppeteer-extra');
 const Stealth = require('puppeteer-extra-plugin-stealth');
 
@@ -7,7 +6,6 @@ puppeteer.use(Stealth());
 function unquote(v) {
   if (!v) return '';
   const s = String(v).trim();
-  // quita comillas simples o dobles que Render puede “mostrar/inyectar”
   return s.replace(/^['"]|['"]$/g, '');
 }
 
@@ -16,10 +14,9 @@ function getEnv(key, def = '') {
 }
 
 function buildProxyArg({ forceProxy = false } = {}) {
-  const proto = getEnv('PROXY_PROTOCOL'); // http/https
+  const proto = getEnv('PROXY_PROTOCOL');
   const host  = getEnv('PROXY_HOST');
   const port  = getEnv('PROXY_PORT');
-
   if (forceProxy && host && port) {
     return `--proxy-server=${proto}://${host}:${port}`;
   }
@@ -39,20 +36,27 @@ async function launchBrowser({ forceProxy = false } = {}) {
 
   const browser = await puppeteer.launch({
     headless: getEnv('PUPPETEER_HEADLESS').toLowerCase() !== 'false',
-    args: [...args, '--disable-http2', '--disable-features=NetworkService'],
+    args: [
+      ...args,
+      '--disable-http2',
+      '--disable-gpu',
+      '--disable-features=IsolateOrigins,site-per-process',
+      '--disable-web-security',
+      '--enable-features=NetworkService,NetworkServiceInProcess',
+      '--window-size=1366,768'
+    ],
     ignoreHTTPSErrors: true,
   });
 
-  const page = await newPage(browser, forceProxy);
+  const page = await newPage(browser);
   return { browser, page };
 }
-  
+
 async function newPage(browser) {
   const page = await browser.newPage();
 
-  // Auth del proxy (sanitizada)
-  const user = getEnv('PROXY_USER'); // ej: user-...-asn-7303
-  const pass = getEnv('PROXY_PASS'); // ¡sin comillas!
+  const user = getEnv('PROXY_USER');
+  const pass = getEnv('PROXY_PASS');
   if (user && pass) {
     await page.authenticate({ username: user, password: pass });
   }

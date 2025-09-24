@@ -1,4 +1,3 @@
-// src/services/platform/playbet.js
 const Base = require('./BasePlatform');
 
 function sleep(ms) {
@@ -11,6 +10,11 @@ class Playbet extends Base {
   }
 
   async login(page, { urlLogin, user, pass }) {
+    // Log de errores de consola para debug Angular
+    page.on('console', msg => {
+      console.log('BROWSER CONSOLE:', msg.type(), msg.text());
+    });
+
     await page.goto(urlLogin, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     // 🚨 Debug HTML y scripts
@@ -23,7 +27,7 @@ class Playbet extends Base {
     console.log("DEBUG SCRIPTS:", scripts);
 
     // Esperar un poco para que Angular monte
-    await sleep(8000); // dale tiempo a Angular
+    await sleep(8000);
 
     // Verificar si existe el form
     const formExists = await page.$('form input[formcontrolname="login"]');
