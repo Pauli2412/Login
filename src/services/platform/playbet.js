@@ -27,18 +27,23 @@ class Playbet extends Base {
     await page.goto(urlLogin, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     try {
-      // 🔹 1. Esperar a Angular root
+      // 🔹 1. Esperar a que Angular monte el root
       await page.waitForSelector("app-root", { timeout: 20000 });
 
-      // 🔹 2. Esperar a que currentDomain tenga siteId
+      // 🔹 2. Esperar a que currentDomain cargue algo usable
       await page.waitForFunction(() => {
-        return window.currentDomain && window.currentDomain.siteId;
+        if (!window.currentDomain) return false;
+        // puede ser objeto o array
+        if (Array.isArray(window.currentDomain)) {
+          return window.currentDomain.length > 0 && window.currentDomain[0].siteId;
+        }
+        return !!window.currentDomain.siteId;
       }, { timeout: 20000 });
 
       const cd = await page.evaluate(() => window.currentDomain);
-      console.log("✅ currentDomain detectado:", cd);
+      console.log("✅ currentDomain detectado (dump):", cd);
 
-      // 🔹 3. Esperar el formulario pero con fallback retries
+      // 🔹 3. Esperar al formulario con reintentos
       let formReady = false;
       for (let i = 0; i < 3; i++) {
         try {
