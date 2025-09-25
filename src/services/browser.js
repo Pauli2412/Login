@@ -4,7 +4,7 @@ const puppeteer = require('puppeteer-extra');
 const Stealth = require('puppeteer-extra-plugin-stealth');
 const fs = require("fs");
 
-const domainPath = path.resolve(__dirname, "domain.json"); 
+const domainPath = path.resolve(__dirname, "domain.json");
 const fullDomainJson = JSON.parse(fs.readFileSync(domainPath, "utf8"));
 
 puppeteer.use(Stealth());
@@ -58,6 +58,15 @@ async function launchBrowser({ forceProxy = false } = {}) {
   return { browser, page };
 }
 
+function preview(obj, max = 300) {
+  try {
+    const json = JSON.stringify(obj);
+    return json.length > max ? json.slice(0, max) + '…' : json;
+  } catch {
+    return '[unserializable]';
+  }
+}
+
 async function newPage(browser) {
   const page = await browser.newPage();
 
@@ -90,20 +99,29 @@ async function newPage(browser) {
     const url = req.url();
 
     if (url.includes("assets/domain.json")) {
-      console.log("⚡ Interceptando domain.json → devolviendo JSON filtrado");
-
       try {
-        // Tomar el host actual
-        const hostname = new URL(req.frame().url()).hostname;
+        // Hostname de la página que hizo la request (no del recurso)
+        const frameUrl = req.frame()?.url() || '';
+        const hostname = frameUrl ? new URL(frameUrl).hostname : 'desconocido';
         const match = fullDomainJson.find(d => d.hostName === hostname);
+
+        // Angular espera un array SIEMPRE
+        const payload = match ? [match] : fullDomainJson;
+
+        // 🧭 LOG DETALLADO
+        console.log(
+          `[domain.json] host="${hostname}" match=${!!match} ` +
+          `items=${Array.isArray(payload) ? payload.length : 'N/A'} ` +
+          `preview=${preview(Array.isArray(payload) ? payload[0] : payload)}`
+        );
 
         return req.respond({
           status: 200,
           contentType: "application/json",
-          body: JSON.stringify(match || fullDomainJson[0]), // fallback al primero
+          body: JSON.stringify(payload),
         });
       } catch (e) {
-        console.error("❌ Error filtrando domain.json:", e);
+        console.error("❌ Error preparando domain.json:", e);
         return req.respond({
           status: 200,
           contentType: "application/json",

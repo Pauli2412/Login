@@ -1,4 +1,3 @@
-// src/services/platform/playbet.js
 const Base = require('./BasePlatform');
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -38,27 +37,20 @@ class Playbet extends Base {
     console.log("DEBUG SCRIPTS:", scripts);
 
     try {
-      // 🔹 1. Esperar a que Angular monte el root
+      // 🔹 Esperar a que Angular monte el root
       await page.waitForSelector("app-root", { timeout: 20000 });
 
-      // 🔹 2. Esperar a que Angular haya cargado el currentDomain con siteId
-      await page.waitForFunction(() => {
-        return !!(window.currentDomain && window.currentDomain.siteId);
-      }, { timeout: 20000 });
-      console.log("✅ siteId detectado en currentDomain:", 
-        await page.evaluate(() => window.currentDomain.siteId));
-
-      // 🔹 3. Recién después esperar al formulario
+      // 🔹 Esperar directamente al formulario
       await page.waitForSelector('form input[formcontrolname="login"]', {
         visible: true,
-        timeout: 20000
+        timeout: 25000
       });
-    } catch (err) {
+    } catch {
       const html = await page.content();
       console.log("DEBUG HTML (first 1000 chars):", html.slice(0, 1000));
       const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
       console.log("DEBUG SCREENSHOT (first 500 chars):", screenshot.slice(0, 500));
-      throw new Error("Formulario de login no cargó (Angular no montó o no cargó siteId)");
+      throw new Error("Formulario de login no cargó (Angular no montó)");
     }
 
     // Completar login
@@ -100,3 +92,4 @@ class Playbet extends Base {
 }
 
 module.exports = Playbet;
+
