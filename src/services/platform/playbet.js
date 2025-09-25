@@ -15,10 +15,10 @@ class Playbet extends Base {
     // Mock básico de localStorage/sessionStorage
     await page.evaluateOnNewDocument(() => {
       window.localStorage = window.localStorage || {
-        getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
+        getItem: () => null, setItem: () => { }, removeItem: () => { }, clear: () => { }
       };
       window.sessionStorage = window.sessionStorage || {
-        getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
+        getItem: () => null, setItem: () => { }, removeItem: () => { }, clear: () => { }
       };
       navigator.permissions = {
         query: async () => ({ state: 'granted' })
@@ -43,9 +43,16 @@ class Playbet extends Base {
     const formExists = await page.$('form input[formcontrolname="login"]');
     console.log("DEBUG FORM EXISTS:", !!formExists);
 
-    if (!formExists) {
+    try {
+      await page.waitForSelector('form input[formcontrolname="login"]', {
+        visible: true,
+        timeout: 25000
+      });
+    } catch {
+      const html = await page.content();
+      console.log("DEBUG HTML (first 1000 chars):", html.slice(0, 1000));
       const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
-      console.log("DEBUG SCREENSHOT (base64, first 500 chars):", screenshot.slice(0, 500));
+      console.log("DEBUG SCREENSHOT (first 500 chars):", screenshot.slice(0, 500));
       throw new Error("Formulario de login no cargó (Angular no montó o está bloqueado)");
     }
 
@@ -59,7 +66,7 @@ class Playbet extends Base {
     const loginBtn = await page.$('button[type="submit"]');
     await Promise.all([
       loginBtn.click(),
-      page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(() => {})
+      page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(() => { })
     ]);
 
     return true;
