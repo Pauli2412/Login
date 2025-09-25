@@ -15,10 +15,10 @@ class Playbet extends Base {
     // Mock básico de localStorage/sessionStorage
     await page.evaluateOnNewDocument(() => {
       window.localStorage = window.localStorage || {
-        getItem: () => null, setItem: () => { }, removeItem: () => { }, clear: () => { }
+        getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
       };
       window.sessionStorage = window.sessionStorage || {
-        getItem: () => null, setItem: () => { }, removeItem: () => { }, clear: () => { }
+        getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
       };
       navigator.permissions = {
         query: async () => ({ state: 'granted' })
@@ -37,17 +37,12 @@ class Playbet extends Base {
     );
     console.log("DEBUG SCRIPTS:", scripts);
 
-    // Espera larga para Angular
-    await sleep(12000);
-
-    const formExists = await page.$('form input[formcontrolname="login"]');
-    console.log("DEBUG FORM EXISTS:", !!formExists);
-
+    // 🔹 Espera a que Angular monte el root
     try {
-      await page.waitForSelector('form input[formcontrolname="login"]', {
-        visible: true,
-        timeout: 25000
-      });
+      await page.waitForSelector("app-root", { timeout: 20000 });
+      await page.waitForFunction(() => {
+        return !!document.querySelector('form input[formcontrolname="login"]');
+      }, { timeout: 20000 });
     } catch {
       const html = await page.content();
       console.log("DEBUG HTML (first 1000 chars):", html.slice(0, 1000));
@@ -66,7 +61,7 @@ class Playbet extends Base {
     const loginBtn = await page.$('button[type="submit"]');
     await Promise.all([
       loginBtn.click(),
-      page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(() => { })
+      page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(() => {})
     ]);
 
     return true;
@@ -93,6 +88,5 @@ class Playbet extends Base {
     return { usuario, monto, plataforma: "Playbet", status: "ok" };
   }
 }
-
 
 module.exports = Playbet;
