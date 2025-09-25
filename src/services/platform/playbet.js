@@ -1,3 +1,4 @@
+// src/services/platform/playbet.js
 const Base = require('./BasePlatform');
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -7,11 +8,9 @@ class Playbet extends Base {
   }
 
   async login(page, { urlLogin, user, pass }) {
-    // Logs de consola y errores
     page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
     page.on('pageerror', err => console.log('BROWSER PAGEERROR:', err.message));
 
-    // Mock básico de localStorage/sessionStorage
     await page.evaluateOnNewDocument(() => {
       window.localStorage = window.localStorage || {
         getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
@@ -27,33 +26,44 @@ class Playbet extends Base {
     console.log(`[Playbet] Navegando a: ${urlLogin}`);
     await page.goto(urlLogin, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // Debug inicial
-    const html = await page.content();
-    console.log("DEBUG HTML (first 1000 chars):", html.slice(0, 1000));
-
-    const scripts = await page.$$eval("script", els =>
-      els.map(e => e.src || e.innerText.slice(0, 80))
-    );
-    console.log("DEBUG SCRIPTS:", scripts);
-
     try {
-      // 🔹 Esperar a que Angular monte el root
+      // 🔹 1. Esperar a Angular root
       await page.waitForSelector("app-root", { timeout: 20000 });
 
-      // 🔹 Esperar directamente al formulario
-      await page.waitForSelector('form input[formcontrolname="login"]', {
-        visible: true,
-        timeout: 25000
-      });
-    } catch {
+      // 🔹 2. Esperar a que currentDomain tenga siteId
+      await page.waitForFunction(() => {
+        return window.currentDomain && window.currentDomain.siteId;
+      }, { timeout: 20000 });
+
+      const cd = await page.evaluate(() => window.currentDomain);
+      console.log("✅ currentDomain detectado:", cd);
+
+      // 🔹 3. Esperar el formulario pero con fallback retries
+      let formReady = false;
+      for (let i = 0; i < 3; i++) {
+        try {
+          await page.waitForSelector('form input[formcontrolname="login"]', {
+            visible: true,
+            timeout: 8000
+          });
+          formReady = true;
+          break;
+        } catch {
+          console.log(`⏳ Reintentando detectar formulario (intento ${i+1})`);
+          await sleep(2000);
+        }
+      }
+      if (!formReady) throw new Error("Formulario de login no cargó (Angular no montó)");
+
+    } catch (err) {
       const html = await page.content();
       console.log("DEBUG HTML (first 1000 chars):", html.slice(0, 1000));
       const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
       console.log("DEBUG SCREENSHOT (first 500 chars):", screenshot.slice(0, 500));
-      throw new Error("Formulario de login no cargó (Angular no montó)");
+      throw err;
     }
 
-    // Completar login
+    // 🔹 4. Completar login
     const userInput = await page.$('input[formcontrolname="login"]');
     const passInput = await page.$('input[formcontrolname="password"]');
 
@@ -75,21 +85,15 @@ class Playbet extends Base {
 
   async depositar(usuario, monto) {
     const page = await this.getSessionPage();
-
-    // Ir a la página de depósitos
     await page.goto(`${this.url}/deposit`, { waitUntil: "networkidle2" });
-
-    // Rellenar formulario
     await page.type("#user-input", usuario);
     await page.type("#amount-input", monto.toString());
-
-    // Confirmar
     await page.click("#deposit-button");
     await page.waitForSelector(".success-message", { timeout: 10000 });
-
     return { usuario, monto, plataforma: "Playbet", status: "ok" };
   }
 }
 
 module.exports = Playbet;
+
 
