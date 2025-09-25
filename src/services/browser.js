@@ -5,8 +5,10 @@ const Stealth = require('puppeteer-extra-plugin-stealth');
 const fs = require("fs");
 
 // Carga segura del domain.json completo
-const domainPath = path.join(process.cwd(), "domain.json");
+const domainPath = path.resolve(__dirname, "domain.json"); 
 const fullDomainJson = JSON.parse(fs.readFileSync(domainPath, "utf8"));
+
+
 
 puppeteer.use(Stealth());
 
