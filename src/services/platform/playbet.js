@@ -27,7 +27,9 @@ class Playbet extends Base {
 
     try {
       // 1. Esperar a que Angular monte el root
-      await page.waitForSelector("app-root", { timeout: 30000 });
+      await page.waitForSelector("form", { timeout: 30000 });
+      const html = await page.content();
+      console.log("LOGIN PAGE HTML (first 1000 chars):", html.slice(0, 1000));
 
       // 2. Inyectar watcher para loguear cuando currentDomain aparezca
       await page.evaluateOnNewDocument(() => {

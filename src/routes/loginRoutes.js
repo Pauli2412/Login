@@ -1,3 +1,4 @@
+const loginService = require('../services/loginService');
 const express = require('express');
 const router = express.Router();
 const { doLoginOne, doLoginAll, getSessionFor, keepAlive } = require('../services/loginService');
