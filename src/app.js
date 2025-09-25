@@ -13,6 +13,7 @@ const app = express();
 app.use(express.json({ limit: '1mb' }));
 
 app.use('/', loginRoutes);
+app.use("/api/login", loginRoutes);
 app.use(errorHandler);
 
 const PORT = process.env.PORT || 4002;
@@ -33,3 +34,5 @@ cron.schedule(spec, async () => {
     logger.error({ e }, 'keepalive cron failed');
   }
 });
+
+module.exports = app;
