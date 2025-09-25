@@ -4,7 +4,8 @@ const puppeteer = require('puppeteer-extra');
 const Stealth = require('puppeteer-extra-plugin-stealth');
 
 // Carga segura del domain.json completo
-const fullDomainJson = require(path.resolve(__dirname, "domain.json"));
+const domainPath = path.join(process.cwd(), "domain.json");
+const fullDomainJson = JSON.parse(fs.readFileSync(domainPath, "utf8"));
 
 puppeteer.use(Stealth());
 
@@ -88,7 +89,6 @@ async function newPage(browser) {
   page.on('request', (req) => {
     const url = req.url();
 
-    // Mock para domain.json
     if (url.includes("assets/domain.json")) {
       console.log("⚡ Interceptando domain.json → devolviendo JSON completo");
       return req.respond({
