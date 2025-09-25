@@ -14,10 +14,10 @@ class Playbet extends Base {
     // Mock básico
     await page.evaluateOnNewDocument(() => {
       window.localStorage = window.localStorage || {
-        getItem: () => null, setItem: () => { }, removeItem: () => { }, clear: () => { }
+        getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
       };
       window.sessionStorage = window.sessionStorage || {
-        getItem: () => null, setItem: () => { }, removeItem: () => { }, clear: () => { }
+        getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
       };
       navigator.permissions = { query: async () => ({ state: 'granted' }) };
     });
@@ -27,9 +27,7 @@ class Playbet extends Base {
 
     try {
       // 1. Esperar a que Angular monte el root
-      await page.waitForSelector("form", { timeout: 30000 });
-      const html = await page.content();
-      console.log("LOGIN PAGE HTML (first 1000 chars):", html.slice(0, 1000));
+      await page.waitForSelector("app-root", { timeout: 30000 });
 
       // 2. Inyectar watcher para loguear cuando currentDomain aparezca
       await page.evaluateOnNewDocument(() => {
@@ -81,7 +79,7 @@ class Playbet extends Base {
     const loginBtn = await page.$('button[type="submit"]');
     await Promise.all([
       loginBtn.click(),
-      page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(() => { })
+      page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(() => {})
     ]);
 
     return true;
@@ -91,63 +89,194 @@ class Playbet extends Base {
     return !!(await page.$('.logoutimg, a[href*="logout"], .main-dashboard'));
   }
 
-  async depositar(page, usuario, monto) {
-    // 1) Dump de ruta y frames
-    console.log('[DEP] URL actual:', page.url());
-    const frames = page.frames().map(f => ({ name: f.name(), url: f.url() }));
-    console.log('[DEP] FRAMES:', frames);
+  // dentro de class Playbet extends Base
+async depositar(usuario, monto) {
+  const page = await this.getSessionPage();
+  const urlDep = `${this.url}#/user/deposit`;
 
-    // 2) Si hay iframe de cashier, intentar enfocarlo
-    const cashierFrame = page.frames().find(f => /cashier/i.test(f.url()) || /deposit/i.test(f.url()));
-    const scope = cashierFrame || page;
-    console.log('[DEP] Usando scope:', cashierFrame ? cashierFrame.url() : 'main');
+  const wait = (sel, t = 20000) => page.waitForSelector(sel, { visible: true, timeout: t });
+  const textMatch = async (root, tag, regex) => {
+    return await root.$x(`.//${tag}[normalize-space(text())][contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'${regex.toLowerCase()}')]`);
+  };
 
-    // 3) Listar inputs y botones candidatos
-    const candidates = await scope.evaluate(() => {
-      const toText = el => (el.innerText || el.value || el.getAttribute('placeholder') || '').trim();
-      const all = [...document.querySelectorAll('input, button, [role="button"]')];
-      return all.map(el => ({
-        tag: el.tagName.toLowerCase(),
-        id: el.id || null,
-        name: el.getAttribute('name'),
-        fc: el.getAttribute('formcontrolname'),
-        type: el.getAttribute('type'),
-        placeholder: el.getAttribute('placeholder'),
-        text: toText(el),
-        classes: el.className
-      }));
-    });
-    console.log('[DEP] CANDIDATES:', JSON.stringify(candidates, null, 2).slice(0, 5000));
+  // util: click por texto visible (button/a/div con role)
+  const clickByText = async (scope, rx, tags = ['button','a','div','span']) => {
+    for (const tag of tags) {
+      const nodes = await scope.$x(`.//${tag}[normalize-space(text())]`);
+      for (const n of nodes) {
+        const s = (await page.evaluate(el => el.innerText || el.textContent || '', n)).trim().toLowerCase();
+        if (rx.test(s)) { await n.click(); return true; }
+      }
+    }
+    return false;
+  };
 
-    // 4) Volcado de posibles inputs de usuario/monto/botón por heurística
-    const pick = (arr, test) => arr.find(test);
-    const userEl = pick(candidates, c =>
-      /user|usuario|login|nick|player/i.test([c.id, c.name, c.fc, c.placeholder, c.text].join(' '))
-    );
-    const amountEl = pick(candidates, c =>
-      /monto|amount|importe|value/i.test([c.id, c.name, c.fc, c.placeholder, c.text].join(' '))
-    );
-    const submitEl = pick(candidates, c =>
-      /deposit|cargar|confirmar|continuar|enviar|pagar/i.test([c.id, c.name, c.fc, c.placeholder, c.text].join(' '))
-      && (c.tag === 'button' || c.role === 'button' || c.type === 'submit')
-    );
-    console.log('[DEP] Heurística -> userEl:', userEl, 'amountEl:', amountEl, 'submitEl:', submitEl);
+  // 1) Ir a la vista de depósito
+  console.log('[DEP] Navegando a', urlDep);
+  await page.goto(urlDep, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
-    // 5) Log de storage/keys útiles
-    const storage = await scope.evaluate(() => ({
-      token: localStorage.getItem('authToken') || sessionStorage.getItem('authToken'),
-      keys: Object.keys(localStorage)
-    }));
-    console.log('[DEP] STORAGE:', storage);
+  // Esperar a que Angular pinte app-deposit
+  await page.waitForSelector('app-deposit', { timeout: 30000 }).catch(() => {});
+  // Ciertas vistas cargan lento por Cloudflare/spinner → esperar contenedor del formulario
+  await page.waitForSelector('.repot_agen .form_sty', { timeout: 30000 });
 
-    await page.goto(`${this.url}/deposit`, { waitUntil: "networkidle2" });
-    await page.type("#user-input", usuario);
-    await page.type("#amount-input", monto.toString());
-    await page.click("#deposit-button");
-    await page.waitForSelector(".success-message", { timeout: 10000 });
-
-    return { usuario, monto, plataforma: "Playbet", status: "ok" };
+  // 2) Cargar usuario en el filtro (accountMask)
+  const accountInput = await page.$('input[formcontrolname="accountMask"]');
+  if (!accountInput) {
+    throw new Error('No encontré el input de usuario (formcontrolname="accountMask").');
   }
+  await accountInput.click({ clickCount: 3 });
+  await accountInput.type(String(usuario), { delay: 20 });
+
+  // 3) Intentar detectar un input de monto directo (escenario A)
+  const amountSelectors = [
+    'input[formcontrolname="amount"]',
+    'input[name="amount"]',
+    'input[type="number"]',
+    'input[placeholder*="monto" i]',
+    'input[placeholder*="importe" i]',
+    'input[placeholder*="amount" i]',
+  ];
+  let amountInputHandle = null;
+  for (const sel of amountSelectors) {
+    amountInputHandle = await page.$(sel);
+    if (amountInputHandle) break;
+  }
+
+  if (amountInputHandle) {
+    console.log('[DEP] Modo directo: encontré input de monto');
+    await amountInputHandle.click({ clickCount: 3 });
+    await amountInputHandle.type(String(monto), { delay: 20 });
+
+    // botón de confirmar (varias variantes de texto/clase)
+    const confirmSelectors = [
+      'button.agent_sub',
+      'button[type="submit"]',
+      'button.btn-primary',
+    ];
+    let clicked = false;
+    for (const sel of confirmSelectors) {
+      const btn = await page.$(sel);
+      if (btn) { await btn.click(); clicked = true; break; }
+    }
+    if (!clicked) {
+      // por texto
+      const ok = await clickByText(page, /(entregar|depositar|confirmar|cargar)/i);
+      if (!ok) throw new Error('No encontré el botón para confirmar depósito.');
+    }
+
+    // esperar resultado: red silenciosa o toast
+    await page.waitForNetworkIdle({ idleTime: 800, timeout: 15000 }).catch(() => {});
+    return { usuario, monto, plataforma: 'Playbet', status: 'ok' };
+  }
+
+  // 4) Si no hay monto directo → escenario B (2 pasos)
+  console.log('[DEP] Modo 2-pasos: envío filtro con "Entregar"');
+  const submitFilterBtn = (await page.$('button.agent_sub')) || null;
+  if (submitFilterBtn) {
+    await submitFilterBtn.click();
+  } else {
+    const ok = await clickByText(page, /(entregar|buscar|filtrar|continuar)/i);
+    if (!ok) throw new Error('No encontré el botón para aplicar el filtro.');
+  }
+
+  // Esperar que aparezca una tabla/lista con el usuario
+  // El layout de esta app usa tablas con clases tipo .tbl-content o una lista de tarjetas
+  await page.waitForTimeout(1500);
+  // Buscar una fila que contenga el usuario
+  const rowXpath = `//*[self::tr or self::div][.//*[contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'${String(usuario).toLowerCase()}')] or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'${String(usuario).toLowerCase()}')]`;
+  const rowCandidates = await page.$x(rowXpath);
+
+  if (!rowCandidates.length) {
+    console.warn('[DEP] No encontré filas visibles con el usuario, intento refrescar resultados...');
+    await page.waitForNetworkIdle({ idleTime: 800, timeout: 10000 }).catch(() => {});
+  }
+
+  // Reintento de filas
+  const rows = (rowCandidates.length ? rowCandidates : await page.$x(rowXpath));
+  if (!rows.length) {
+    throw new Error(`No encontré resultados para el usuario "${usuario}" en la lista de depósito.`);
+  }
+
+  // 5) Dentro de la fila, localizar el botón "Depositar"/"Cargar"/"Acción"
+  let clickedAction = false;
+  for (const row of rows) {
+    // Intentar botón por texto
+    const btnOk = await (async () => {
+      const btns = await row.$x('.//button|.//a|.//*[@role="button"]');
+      for (const b of btns) {
+        const t = (await page.evaluate(el => el.innerText || el.textContent || '', b)).trim().toLowerCase();
+        if (/(depositar|cargar|acreditar|agregar|crédito)/.test(t)) {
+          await b.click();
+          return true;
+        }
+      }
+      return false;
+    })();
+    if (btnOk) { clickedAction = true; break; }
+  }
+
+  if (!clickedAction) {
+    // fallback: clic en el primer botón/ícono de acción de la primera fila
+    const firstRow = rows[0];
+    const anyBtn = await firstRow.$x('.//button|.//a|.//*[@role="button"]');
+    if (!anyBtn.length) {
+      throw new Error('No encontré acción para abrir el modal de depósito.');
+    }
+    await anyBtn[0].click();
+  }
+
+  // 6) Esperar modal/popup (la app usa clases .popup_1 o overlays custom)
+  await page.waitForTimeout(800);
+  const modal = (await page.$('.popup_1')) || (await page.$('.modal.show')) || page;
+
+  // 7) Buscar input de monto dentro del modal
+  let modalAmount = null;
+  const modalScope = modal;
+  const modalAmountSelectors = [
+    'input[formcontrolname="amount"]',
+    'input[name="amount"]',
+    'input[type="number"]',
+    'input[placeholder*="monto" i]',
+    'input[placeholder*="importe" i]',
+    'input[placeholder*="amount" i]',
+  ];
+  for (const sel of modalAmountSelectors) {
+    modalAmount = await (modalScope === page ? page.$(sel) : modal.$(sel));
+    if (modalAmount) break;
+  }
+  if (!modalAmount) {
+    // fallback: el primero numérico
+    const nums = await (modalScope === page
+      ? page.$$('input[type="number"]')
+      : modal.$$('input[type="number"]'));
+    if (nums && nums.length) modalAmount = nums[0];
+  }
+  if (!modalAmount) throw new Error('No encontré el input de monto en el modal.');
+
+  await modalAmount.click({ clickCount: 3 });
+  await modalAmount.type(String(monto), { delay: 20 });
+
+  // 8) Confirmar en el modal
+  let confirmed = false;
+  const modalOkSelectors = ['button.btn-primary', 'button[type="submit"]', 'button.agent_sub'];
+  for (const sel of modalOkSelectors) {
+    const btn = await (modalScope === page ? page.$(sel) : modal.$(sel));
+    if (btn) { await btn.click(); confirmed = true; break; }
+  }
+  if (!confirmed) {
+    const ok = await clickByText(modalScope === page ? page : modal, /(depositar|confirmar|aceptar|cargar|entregar)/i);
+    if (!ok) throw new Error('No encontré el botón de confirmar en el modal.');
+  }
+
+  // 9) Esperar confirmación (red/idle o toast)
+  await page.waitForNetworkIdle({ idleTime: 1000, timeout: 15000 }).catch(() => {});
+  // opcional: verificar toast de éxito si existe
+  // const toast = await page.$('.toast-success, .alert-success'); if (!toast) ...
+
+  return { usuario, monto, plataforma: 'Playbet', status: 'ok' };
+}
+
 
 }
 
