@@ -1,7 +1,7 @@
 // src/services/platform/playbet.js
 const Base = require('./BasePlatform');
 const { launchBrowser } = require('../browser');
-const { getSession, setSession } = require('../BasePlatform');
+const { getSession, setSession } = require('../sessionStore');
 
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
@@ -15,6 +15,7 @@ class Playbet extends Base {
     page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
     page.on('pageerror', err => console.log('BROWSER PAGEERROR:', err.message));
 
+    // Mock para localStorage/sessionStorage
     await page.evaluateOnNewDocument(() => {
       try {
         window.localStorage = window.localStorage || {
@@ -50,9 +51,11 @@ class Playbet extends Base {
 
       await userInput.click({ clickCount: 3 });
       await userInput.type(user, { delay: 30 });
+
       await passInput.click({ clickCount: 3 });
       await passInput.type(pass, { delay: 30 });
 
+      // Esperar a que el botón se habilite
       await page.waitForFunction(() => {
         const b = document.querySelector('app-login button.dis_login[type="submit"]');
         return b && !b.disabled && !b.classList.contains('disabled');
@@ -73,7 +76,7 @@ class Playbet extends Base {
       const ok = await this.isLogged(page);
       if (!ok) throw new Error('Login aparentemente falló.');
 
-      // Guardar cookies/tokens en el store
+      // 🔑 Guardamos cookies y token en sessionStore
       const cookies = await page.cookies();
       const token = await page.evaluate(() => localStorage.getItem('token') || '');
       setSession(this.name, { cookies, token });
@@ -104,7 +107,6 @@ class Playbet extends Base {
 
     const { browser, page } = await launchBrowser({ forceProxy: false });
     try {
-      await page.goto(this.url, { waitUntil: 'domcontentloaded', timeout: 20000 });
       await page.setCookie(...s.cookies);
 
       const urlDep = `${this.url}#/user/deposit`;
@@ -120,135 +122,18 @@ class Playbet extends Base {
       await accountInput.click({ clickCount: 3 });
       await accountInput.type(String(usuario), { delay: 20 });
 
-      const clickByText = async (scope, rx, tags = ['button', 'a', 'div', 'span']) => {
-        for (const tag of tags) {
-          const nodes = await scope.$x(`.//${tag}[normalize-space(text())]`);
-          for (const n of nodes) {
-            const s = (await page.evaluate(el => el.innerText || el.textContent || '', n)).trim().toLowerCase();
-            if (rx.test(s)) { await n.click(); return true; }
-          }
-        }
-        return false;
-      };
-
-      // Intentar input directo de monto
-      const amountSelectors = [
-        'input[formcontrolname="amount"]',
-        'input[name="amount"]',
-        'input[type="number"]',
-        'input[placeholder*="monto" i]',
-        'input[placeholder*="importe" i]',
-        'input[placeholder*="amount" i]',
-      ];
-      let amountInputHandle = null;
-      for (const sel of amountSelectors) {
-        amountInputHandle = await page.$(sel);
-        if (amountInputHandle) break;
-      }
-
-      if (amountInputHandle) {
-        console.log('[DEP] Modo directo');
-        await amountInputHandle.click({ clickCount: 3 });
-        await amountInputHandle.type(String(monto), { delay: 20 });
-
-        const confirmSelectors = [
-          'button.agent_sub',
-          'button[type="submit"]',
-          'button.btn-primary',
-        ];
-        let clicked = false;
-        for (const sel of confirmSelectors) {
-          const btn = await page.$(sel);
-          if (btn) { await btn.click(); clicked = true; break; }
-        }
-        if (!clicked) {
-          const ok = await clickByText(page, /(entregar|depositar|confirmar|cargar)/i);
-          if (!ok) throw new Error('No encontré el botón para confirmar depósito.');
-        }
-
+      // Buscar input de monto directo
+      const amountInput = await page.$('input[formcontrolname="amount"]');
+      if (amountInput) {
+        await amountInput.click({ clickCount: 3 });
+        await amountInput.type(String(monto), { delay: 20 });
+        const btn = await page.$('button.agent_sub') || await page.$('button[type="submit"]');
+        if (btn) await btn.click();
         await page.waitForNetworkIdle({ idleTime: 800, timeout: 15000 }).catch(() => {});
         return { usuario, monto, plataforma: 'Playbet', status: 'ok' };
       }
 
-      // Caso 2 pasos
-      console.log('[DEP] Modo 2-pasos');
-      const submitFilterBtn = (await page.$('button.agent_sub')) || null;
-      if (submitFilterBtn) {
-        await submitFilterBtn.click();
-      } else {
-        const ok = await clickByText(page, /(entregar|buscar|filtrar|continuar)/i);
-        if (!ok) throw new Error('No encontré el botón para aplicar el filtro.');
-      }
-
-      await page.waitForTimeout(1500);
-      const rowXpath = `//*[self::tr or self::div][.//*[contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'${String(usuario).toLowerCase()}')] or contains(translate(normalize-space(.),'ABCDEFGHIJKLMNOPQRSTUVWXYZ','abcdefghijklmnopqrstuvwxyz'),'${String(usuario).toLowerCase()}')]`;
-      const rowCandidates = await page.$x(rowXpath);
-
-      const rows = (rowCandidates.length ? rowCandidates : await page.$x(rowXpath));
-      if (!rows.length) {
-        throw new Error(`No encontré resultados para el usuario "${usuario}".`);
-      }
-
-      let clickedAction = false;
-      for (const row of rows) {
-        const btns = await row.$x('.//button|.//a|.//*[@role="button"]');
-        for (const b of btns) {
-          const t = (await page.evaluate(el => el.innerText || el.textContent || '', b)).trim().toLowerCase();
-          if (/(depositar|cargar|acreditar|agregar|crédito)/.test(t)) {
-            await b.click();
-            clickedAction = true;
-            break;
-          }
-        }
-        if (clickedAction) break;
-      }
-      if (!clickedAction) {
-        const firstRow = rows[0];
-        const anyBtn = await firstRow.$x('.//button|.//a|.//*[@role="button"]');
-        if (!anyBtn.length) throw new Error('No encontré acción de depósito.');
-        await anyBtn[0].click();
-      }
-
-      await page.waitForTimeout(800);
-      const modal = (await page.$('.popup_1')) || (await page.$('.modal.show')) || page;
-
-      let modalAmount = null;
-      const modalAmountSelectors = [
-        'input[formcontrolname="amount"]',
-        'input[name="amount"]',
-        'input[type="number"]',
-        'input[placeholder*="monto" i]',
-        'input[placeholder*="importe" i]',
-        'input[placeholder*="amount" i]',
-      ];
-      for (const sel of modalAmountSelectors) {
-        modalAmount = await (modal === page ? page.$(sel) : modal.$(sel));
-        if (modalAmount) break;
-      }
-      if (!modalAmount) {
-        const nums = await (modal === page ? page.$$('input[type="number"]') : modal.$$('input[type="number"]'));
-        if (nums && nums.length) modalAmount = nums[0];
-      }
-      if (!modalAmount) throw new Error('No encontré input de monto en modal.');
-
-      await modalAmount.click({ clickCount: 3 });
-      await modalAmount.type(String(monto), { delay: 20 });
-
-      let confirmed = false;
-      const modalOkSelectors = ['button.btn-primary', 'button[type="submit"]', 'button.agent_sub'];
-      for (const sel of modalOkSelectors) {
-        const btn = await (modal === page ? page.$(sel) : modal.$(sel));
-        if (btn) { await btn.click(); confirmed = true; break; }
-      }
-      if (!confirmed) {
-        const ok = await (modal === page
-          ? clickByText(page, /(depositar|confirmar|aceptar|cargar|entregar)/i)
-          : clickByText(modal, /(depositar|confirmar|aceptar|cargar|entregar)/i));
-        if (!ok) throw new Error('No encontré botón de confirmar en modal.');
-      }
-
-      await page.waitForNetworkIdle({ idleTime: 1000, timeout: 15000 }).catch(() => {});
-      return { usuario, monto, plataforma: 'Playbet', status: 'ok' };
+      throw new Error('No encontré input de monto en la vista de depósito.');
 
     } finally {
       await browser.close().catch(() => {});
@@ -257,3 +142,4 @@ class Playbet extends Base {
 }
 
 module.exports = Playbet;
+
