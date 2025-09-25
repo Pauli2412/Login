@@ -11,6 +11,7 @@ class Playbet extends Base {
     page.on('console', msg => console.log('BROWSER CONSOLE:', msg.type(), msg.text()));
     page.on('pageerror', err => console.log('BROWSER PAGEERROR:', err.message));
 
+    // Mock básico
     await page.evaluateOnNewDocument(() => {
       window.localStorage = window.localStorage || {
         getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
@@ -18,48 +19,49 @@ class Playbet extends Base {
       window.sessionStorage = window.sessionStorage || {
         getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
       };
-      navigator.permissions = {
-        query: async () => ({ state: 'granted' })
-      };
+      navigator.permissions = { query: async () => ({ state: 'granted' }) };
     });
 
     console.log(`[Playbet] Navegando a: ${urlLogin}`);
     await page.goto(urlLogin, { waitUntil: 'domcontentloaded', timeout: 30000 });
 
     try {
-      // 🔹 1. Esperar a que Angular monte el root
-      await page.waitForSelector("app-root", { timeout: 20000 });
+      // 1. Esperar a que Angular monte el root
+      await page.waitForSelector("app-root", { timeout: 30000 });
 
-      // 🔹 2. Esperar a que currentDomain cargue algo usable
-      await page.waitForFunction(() => {
-        if (!window.currentDomain) return false;
-        // puede ser objeto o array
-        if (Array.isArray(window.currentDomain)) {
-          return window.currentDomain.length > 0 && window.currentDomain[0].siteId;
-        }
-        return !!window.currentDomain.siteId;
-      }, { timeout: 20000 });
+      // 2. Inyectar watcher para loguear cuando currentDomain aparezca
+      await page.evaluateOnNewDocument(() => {
+        Object.defineProperty(window, 'currentDomain', {
+          set(v) {
+            console.log("[WATCHER] currentDomain asignado:", v);
+            this._currentDomain = v;
+          },
+          get() {
+            return this._currentDomain;
+          },
+          configurable: true
+        });
+      });
 
-      const cd = await page.evaluate(() => window.currentDomain);
-      console.log("✅ currentDomain detectado (dump):", cd);
-
-      // 🔹 3. Esperar al formulario con reintentos
-      let formReady = false;
-      for (let i = 0; i < 3; i++) {
-        try {
-          await page.waitForSelector('form input[formcontrolname="login"]', {
-            visible: true,
-            timeout: 8000
-          });
-          formReady = true;
-          break;
-        } catch {
-          console.log(`⏳ Reintentando detectar formulario (intento ${i+1})`);
-          await sleep(2000);
-        }
+      // 3. Polling manual hasta 30s
+      let siteId = null;
+      for (let i = 0; i < 30; i++) {
+        siteId = await page.evaluate(() => window.currentDomain?.siteId || null);
+        if (siteId) break;
+        await sleep(1000);
       }
-      if (!formReady) throw new Error("Formulario de login no cargó (Angular no montó)");
 
+      if (siteId) {
+        console.log("✅ siteId detectado:", siteId);
+      } else {
+        console.log("⚠️ siteId no apareció, seguimos con fallback...");
+      }
+
+      // 4. Recién después esperar al formulario
+      await page.waitForSelector('form input[formcontrolname="login"]', {
+        visible: true,
+        timeout: 30000
+      });
     } catch (err) {
       const html = await page.content();
       console.log("DEBUG HTML (first 1000 chars):", html.slice(0, 1000));
@@ -68,10 +70,9 @@ class Playbet extends Base {
       throw err;
     }
 
-    // 🔹 4. Completar login
+    // Completar login
     const userInput = await page.$('input[formcontrolname="login"]');
     const passInput = await page.$('input[formcontrolname="password"]');
-
     await userInput.type(user, { delay: 50 });
     await passInput.type(pass, { delay: 50 });
 
@@ -88,7 +89,7 @@ class Playbet extends Base {
     return !!(await page.$('.logoutimg, a[href*="logout"], .main-dashboard'));
   }
 
-  async depositar(usuario, monto) {
+    async depositar(usuario, monto) {
     const page = await this.getSessionPage();
     await page.goto(`${this.url}/deposit`, { waitUntil: "networkidle2" });
     await page.type("#user-input", usuario);
@@ -100,5 +101,4 @@ class Playbet extends Base {
 }
 
 module.exports = Playbet;
-
 
