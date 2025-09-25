@@ -100,19 +100,16 @@ async function newPage(browser) {
 
     if (url.includes("assets/domain.json")) {
       try {
-        // Hostname de la página que hizo la request (no del recurso)
         const frameUrl = req.frame()?.url() || '';
         const hostname = frameUrl ? new URL(frameUrl).hostname : 'desconocido';
         const match = fullDomainJson.find(d => d.hostName === hostname);
 
-        // Angular espera un array SIEMPRE
+        // Angular espera SIEMPRE un array
         const payload = match ? [match] : fullDomainJson;
 
-        // 🧭 LOG DETALLADO
         console.log(
           `[domain.json] host="${hostname}" match=${!!match} ` +
-          `items=${Array.isArray(payload) ? payload.length : 'N/A'} ` +
-          `preview=${preview(Array.isArray(payload) ? payload[0] : payload)}`
+          `items=${payload.length} preview=${preview(payload[0])}`
         );
 
         return req.respond({
