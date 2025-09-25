@@ -105,13 +105,36 @@ async function keepAlive(platformKey) {
  * @param {number} monto - Cantidad de fichas
  */
 async function depositar(plataforma, usuario, monto) {
-  const PlatformClass = platformMap[plataforma];
-  if (!PlatformClass) {
+  const key = plataforma.toLowerCase();
+  const adapter = ADAPTERS[key];
+  if (!adapter) {
     throw new Error(`Plataforma desconocida: ${plataforma}`);
   }
 
-  const platform = new PlatformClass();
-  return platform.depositar(usuario, monto);
+  // Recuperar sesión existente
+  const session = getSession(key);
+  if (!session) {
+    throw new Error(`No hay sesión activa para ${plataforma}`);
+  }
+
+  // Abrir browser con cookies
+  const { browser, page } = await launchBrowser({ forceProxy: key === "ganamos" });
+  try {
+    for (const c of session.cookies || []) {
+      await page.setCookie(c);
+    }
+    if (session.token) {
+      await page.evaluateOnNewDocument((t) => {
+        localStorage.setItem("authToken", t);
+      }, session.token);
+    }
+
+    const result = await adapter.depositar(page, usuario, monto);
+    return result;
+  } finally {
+    await browser.close().catch(() => {});
+  }
 }
+
 
 module.exports = { fetchConfig, doLoginOne, doLoginAll, getSessionFor, keepAlive, depositar };

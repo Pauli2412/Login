@@ -14,10 +14,10 @@ class Playbet extends Base {
     // Mock básico
     await page.evaluateOnNewDocument(() => {
       window.localStorage = window.localStorage || {
-        getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
+        getItem: () => null, setItem: () => { }, removeItem: () => { }, clear: () => { }
       };
       window.sessionStorage = window.sessionStorage || {
-        getItem: () => null, setItem: () => {}, removeItem: () => {}, clear: () => {}
+        getItem: () => null, setItem: () => { }, removeItem: () => { }, clear: () => { }
       };
       navigator.permissions = { query: async () => ({ state: 'granted' }) };
     });
@@ -79,7 +79,7 @@ class Playbet extends Base {
     const loginBtn = await page.$('button[type="submit"]');
     await Promise.all([
       loginBtn.click(),
-      page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(() => {})
+      page.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }).catch(() => { })
     ]);
 
     return true;
@@ -89,15 +89,64 @@ class Playbet extends Base {
     return !!(await page.$('.logoutimg, a[href*="logout"], .main-dashboard'));
   }
 
-    async depositar(usuario, monto) {
-    const page = await this.getSessionPage();
+  async depositar(page, usuario, monto) {
+    // 1) Dump de ruta y frames
+    console.log('[DEP] URL actual:', page.url());
+    const frames = page.frames().map(f => ({ name: f.name(), url: f.url() }));
+    console.log('[DEP] FRAMES:', frames);
+
+    // 2) Si hay iframe de cashier, intentar enfocarlo
+    const cashierFrame = page.frames().find(f => /cashier/i.test(f.url()) || /deposit/i.test(f.url()));
+    const scope = cashierFrame || page;
+    console.log('[DEP] Usando scope:', cashierFrame ? cashierFrame.url() : 'main');
+
+    // 3) Listar inputs y botones candidatos
+    const candidates = await scope.evaluate(() => {
+      const toText = el => (el.innerText || el.value || el.getAttribute('placeholder') || '').trim();
+      const all = [...document.querySelectorAll('input, button, [role="button"]')];
+      return all.map(el => ({
+        tag: el.tagName.toLowerCase(),
+        id: el.id || null,
+        name: el.getAttribute('name'),
+        fc: el.getAttribute('formcontrolname'),
+        type: el.getAttribute('type'),
+        placeholder: el.getAttribute('placeholder'),
+        text: toText(el),
+        classes: el.className
+      }));
+    });
+    console.log('[DEP] CANDIDATES:', JSON.stringify(candidates, null, 2).slice(0, 5000));
+
+    // 4) Volcado de posibles inputs de usuario/monto/botón por heurística
+    const pick = (arr, test) => arr.find(test);
+    const userEl = pick(candidates, c =>
+      /user|usuario|login|nick|player/i.test([c.id, c.name, c.fc, c.placeholder, c.text].join(' '))
+    );
+    const amountEl = pick(candidates, c =>
+      /monto|amount|importe|value/i.test([c.id, c.name, c.fc, c.placeholder, c.text].join(' '))
+    );
+    const submitEl = pick(candidates, c =>
+      /deposit|cargar|confirmar|continuar|enviar|pagar/i.test([c.id, c.name, c.fc, c.placeholder, c.text].join(' '))
+      && (c.tag === 'button' || c.role === 'button' || c.type === 'submit')
+    );
+    console.log('[DEP] Heurística -> userEl:', userEl, 'amountEl:', amountEl, 'submitEl:', submitEl);
+
+    // 5) Log de storage/keys útiles
+    const storage = await scope.evaluate(() => ({
+      token: localStorage.getItem('authToken') || sessionStorage.getItem('authToken'),
+      keys: Object.keys(localStorage)
+    }));
+    console.log('[DEP] STORAGE:', storage);
+
     await page.goto(`${this.url}/deposit`, { waitUntil: "networkidle2" });
     await page.type("#user-input", usuario);
     await page.type("#amount-input", monto.toString());
     await page.click("#deposit-button");
     await page.waitForSelector(".success-message", { timeout: 10000 });
+
     return { usuario, monto, plataforma: "Playbet", status: "ok" };
   }
+
 }
 
 module.exports = Playbet;
