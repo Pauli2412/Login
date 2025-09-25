@@ -120,6 +120,22 @@ router.get('/debug-proxy', async (_req, res) => {
   }
 });
 
+// recibir depósitos
+router.post("/depositar", async (req, res) => {
+  try {
+    const { plataforma, usuario, monto } = req.body;
 
+    if (!plataforma || !usuario || !monto) {
+      return res.status(400).json({ ok: false, error: "Faltan parámetros" });
+    }
+
+    const result = await loginService.depositar(plataforma, usuario, monto);
+
+    res.json({ ok: true, result });
+  } catch (err) {
+    console.error("❌ Error en /depositar:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 module.exports = router;

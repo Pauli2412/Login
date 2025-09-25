@@ -68,6 +68,24 @@ class Playbet extends Base {
   async isLogged(page) {
     return !!(await page.$('.logoutimg, a[href*="logout"], .main-dashboard'));
   }
+
+  async depositar(usuario, monto) {
+    const page = await this.getSessionPage();
+
+    // Ir a la página de depósitos
+    await page.goto(`${this.url}/deposit`, { waitUntil: "networkidle2" });
+
+    // Rellenar formulario
+    await page.type("#user-input", usuario);
+    await page.type("#amount-input", monto.toString());
+
+    // Confirmar
+    await page.click("#deposit-button");
+    await page.waitForSelector(".success-message", { timeout: 10000 });
+
+    return { usuario, monto, plataforma: "Playbet", status: "ok" };
+  }
 }
+
 
 module.exports = Playbet;

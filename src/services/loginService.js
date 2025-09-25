@@ -98,4 +98,20 @@ async function keepAlive(platformKey) {
   return await doLoginAll();
 }
 
-module.exports = { fetchConfig, doLoginOne, doLoginAll, getSessionFor, keepAlive };
+/**
+ * Realiza un depósito de fichas en una plataforma
+ * @param {string} plataforma - Nombre de la plataforma (ej: "Playbet")
+ * @param {string} usuario - Usuario a acreditar
+ * @param {number} monto - Cantidad de fichas
+ */
+async function depositar(plataforma, usuario, monto) {
+  const PlatformClass = platformMap[plataforma];
+  if (!PlatformClass) {
+    throw new Error(`Plataforma desconocida: ${plataforma}`);
+  }
+
+  const platform = new PlatformClass();
+  return platform.depositar(usuario, monto);
+}
+
+module.exports = { fetchConfig, doLoginOne, doLoginAll, getSessionFor, keepAlive, depositar };
