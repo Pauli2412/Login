@@ -1,14 +1,11 @@
-// src/services/browser.js
 const path = require("path");
 const puppeteer = require('puppeteer-extra');
 const Stealth = require('puppeteer-extra-plugin-stealth');
 const fs = require("fs");
 
-// Carga segura del domain.json completo
-const domainPath = path.resolve(__dirname, "domain.json"); 
+// ✅ Ruta correcta al domain.json en raíz del proyecto
+const domainPath = path.resolve(process.cwd(), "domain.json"); 
 const fullDomainJson = JSON.parse(fs.readFileSync(domainPath, "utf8"));
-
-
 
 puppeteer.use(Stealth());
 
@@ -97,6 +94,7 @@ async function newPage(browser) {
       return req.respond({
         status: 200,
         contentType: "application/json",
+        // ✅ Siempre serializar el objeto
         body: JSON.stringify(fullDomainJson),
       });
     }
