@@ -2,6 +2,7 @@
 const path = require("path");
 const puppeteer = require('puppeteer-extra');
 const Stealth = require('puppeteer-extra-plugin-stealth');
+const fs = require("fs");
 
 // Carga segura del domain.json completo
 const domainPath = path.join(process.cwd(), "domain.json");
