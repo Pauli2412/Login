@@ -1,10 +1,10 @@
+// src/services/browser.js
 const path = require("path");
 const puppeteer = require('puppeteer-extra');
 const Stealth = require('puppeteer-extra-plugin-stealth');
 const fs = require("fs");
 
-// ✅ Ruta correcta al domain.json en raíz del proyecto
-const domainPath = path.resolve(process.cwd(), "domain.json"); 
+const domainPath = path.resolve(__dirname, "domain.json"); 
 const fullDomainJson = JSON.parse(fs.readFileSync(domainPath, "utf8"));
 
 puppeteer.use(Stealth());
@@ -90,13 +90,26 @@ async function newPage(browser) {
     const url = req.url();
 
     if (url.includes("assets/domain.json")) {
-      console.log("⚡ Interceptando domain.json → devolviendo JSON completo");
-      return req.respond({
-        status: 200,
-        contentType: "application/json",
-        // ✅ Siempre serializar el objeto
-        body: JSON.stringify(fullDomainJson),
-      });
+      console.log("⚡ Interceptando domain.json → devolviendo JSON filtrado");
+
+      try {
+        // Tomar el host actual
+        const hostname = new URL(req.frame().url()).hostname;
+        const match = fullDomainJson.find(d => d.hostName === hostname);
+
+        return req.respond({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(match || fullDomainJson[0]), // fallback al primero
+        });
+      } catch (e) {
+        console.error("❌ Error filtrando domain.json:", e);
+        return req.respond({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify(fullDomainJson),
+        });
+      }
     }
 
     const rtype = req.resourceType();

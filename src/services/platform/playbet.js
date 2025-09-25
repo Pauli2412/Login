@@ -37,18 +37,28 @@ class Playbet extends Base {
     );
     console.log("DEBUG SCRIPTS:", scripts);
 
-    // 🔹 Espera a que Angular monte el root
     try {
+      // 🔹 1. Esperar a que Angular monte el root
       await page.waitForSelector("app-root", { timeout: 20000 });
+
+      // 🔹 2. Esperar a que Angular haya cargado el currentDomain con siteId
       await page.waitForFunction(() => {
-        return !!document.querySelector('form input[formcontrolname="login"]');
+        return !!(window.currentDomain && window.currentDomain.siteId);
       }, { timeout: 20000 });
-    } catch {
+      console.log("✅ siteId detectado en currentDomain:", 
+        await page.evaluate(() => window.currentDomain.siteId));
+
+      // 🔹 3. Recién después esperar al formulario
+      await page.waitForSelector('form input[formcontrolname="login"]', {
+        visible: true,
+        timeout: 20000
+      });
+    } catch (err) {
       const html = await page.content();
       console.log("DEBUG HTML (first 1000 chars):", html.slice(0, 1000));
       const screenshot = await page.screenshot({ encoding: 'base64', fullPage: true });
       console.log("DEBUG SCREENSHOT (first 500 chars):", screenshot.slice(0, 500));
-      throw new Error("Formulario de login no cargó (Angular no montó o está bloqueado)");
+      throw new Error("Formulario de login no cargó (Angular no montó o no cargó siteId)");
     }
 
     // Completar login
