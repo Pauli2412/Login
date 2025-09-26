@@ -8,32 +8,39 @@ const Ganamos = require('./platform/ganamos');
 const Buffalo = require('./platform/buffalo');
 const logger = require('../utils/logger');
 
-const ADAPTERS = {
-  aguante: new Aguante(),
-  playbet: new Playbet(),
-  ganamos: new Ganamos(),
-  buffalo: new Buffalo(),
-};
+// Ahora los vamos a instanciar dinámicamente en base a la config.
+let ADAPTERS = {};
 
 async function fetchConfig() {
   const conf = await readConfPlataformas();
 
-  return conf.reduce((acc, c) => {
-    // 🔑 convertir todas las claves a minúscula
+  const byPlatform = conf.reduce((acc, c) => {
+    // 🔑 convertir claves a minúscula
     const normalized = Object.fromEntries(
       Object.entries(c).map(([k, v]) => [k.toLowerCase(), v])
     );
 
-    const key = (normalized.plataforma || "").toLowerCase();
+    const key = (normalized.plataforma || '').toLowerCase();
     if (!key) return acc;
 
     acc[key] = {
-      urlLogin: normalized.urllogin || "",
-      user: normalized.user || "",
-      pass: normalized.pass || "",
+      urlLogin: normalized.urllogin || '',
+      user: normalized.user || '',
+      pass: normalized.pass || '',
+      usuario: normalized.usuario || '', 
     };
     return acc;
   }, {});
+
+  // 🔄 Reinstanciar adapters cada vez con la config actualizada
+  ADAPTERS = {
+    aguante: new Aguante(byPlatform['aguante']),
+    playbet: new Playbet(byPlatform['playbet']), 
+    ganamos: new Ganamos(byPlatform['ganamos']),
+    buffalo: new Buffalo(byPlatform['buffalo']),
+  };
+
+  return byPlatform;
 }
 
 async function doLoginOne(platformKey, confByPlatform) {
@@ -46,9 +53,7 @@ async function doLoginOne(platformKey, confByPlatform) {
     throw new Error(`Faltan credenciales/URL para ${platformKey} en ConfPlataformas`);
   }
 
-  // Solo Ganamos usa proxy
   const useProxy = key === 'ganamos';
-
   const { browser, page } = await launchBrowser({ forceProxy: useProxy });
 
   try {
@@ -67,7 +72,6 @@ async function doLoginOne(platformKey, confByPlatform) {
     await browser.close().catch(() => {});
   }
 }
-
 
 async function doLoginAll() {
   const confByPlatform = await fetchConfig();
@@ -98,12 +102,6 @@ async function keepAlive(platformKey) {
   return await doLoginAll();
 }
 
-/**
- * Realiza un depósito de fichas en una plataforma
- * @param {string} plataforma - Nombre de la plataforma (ej: "Playbet")
- * @param {string} usuario - Usuario a acreditar
- * @param {number} monto - Cantidad de fichas
- */
 async function depositar(plataforma, usuario, monto) {
   const key = plataforma.toLowerCase();
   const adapter = ADAPTERS[key];
@@ -111,30 +109,8 @@ async function depositar(plataforma, usuario, monto) {
     throw new Error(`Plataforma desconocida: ${plataforma}`);
   }
 
-  // Recuperar sesión existente
-  const session = getSession(key);
-  if (!session) {
-    throw new Error(`No hay sesión activa para ${plataforma}`);
-  }
-
-  // Abrir browser con cookies
-  const { browser, page } = await launchBrowser({ forceProxy: key === "ganamos" });
-  try {
-    for (const c of session.cookies || []) {
-      await page.setCookie(c);
-    }
-    if (session.token) {
-      await page.evaluateOnNewDocument((t) => {
-        localStorage.setItem("authToken", t);
-      }, session.token);
-    }
-
-    const result = await adapter.depositar(page, usuario, monto);
-    return result;
-  } finally {
-    await browser.close().catch(() => {});
-  }
+  const result = await adapter.depositar(usuario, monto);
+  return result;
 }
-
 
 module.exports = { fetchConfig, doLoginOne, doLoginAll, getSessionFor, keepAlive, depositar };
