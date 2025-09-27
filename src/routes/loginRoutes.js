@@ -199,6 +199,40 @@ router.post("/depositar/playbet/test", async (_req, res) => {
   }
 });
 
+// Test de depósito en Playbet con timeout seguro
+router.post("/depositar/playbet/test", async (_req, res) => {
+  try {
+    const conf = await fetchConfig();
+    const creds = conf['playbet'];
+    if (!creds) {
+      return res.status(400).json({ ok: false, error: "No hay configuración de Playbet en Sheets" });
+    }
+
+    const Playbet = require("../services/platform/playbet");
+    const service = new Playbet(creds);
+
+    const testUser = "usuario_test";
+    const testAmount = 1000.50;
+
+    const result = await Promise.race([
+      service.depositar(testUser, testAmount),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout depósito test (20s)")), 20000))
+    ]);
+
+    res.json({
+      ok: true,
+      msg: "Depósito de prueba ejecutado",
+      masterAgentName: creds.user,
+      usuario: testUser,
+      monto: testAmount,
+      result
+    });
+  } catch (err) {
+    console.error("❌ Error en /depositar/playbet/test:", err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 
 module.exports = router;
 

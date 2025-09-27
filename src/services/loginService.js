@@ -15,7 +15,6 @@ async function fetchConfig() {
   const conf = await readConfPlataformas();
 
   const byPlatform = conf.reduce((acc, c) => {
-    // 🔑 convertir claves a minúscula
     const normalized = Object.fromEntries(
       Object.entries(c).map(([k, v]) => [k.toLowerCase(), v])
     );
@@ -23,25 +22,31 @@ async function fetchConfig() {
     const key = (normalized.plataforma || '').toLowerCase();
     if (!key) return acc;
 
+    // Solo registrar si tiene credenciales mínimas
+    if (!normalized.urllogin || !normalized.user || !normalized.pass) {
+      console.warn(`[fetchConfig] ⚠️ Ignorando plataforma ${key} por credenciales faltantes`);
+      return acc;
+    }
+
     acc[key] = {
-      urlLogin: normalized.urllogin || '',
-      user: normalized.user || '',
-      pass: normalized.pass || '',
-      usuario: normalized.usuario || '', 
+      urlLogin: normalized.urllogin,
+      user: normalized.user,
+      pass: normalized.pass,
+      usuario: normalized.usuario || '',
     };
     return acc;
   }, {});
 
-  // 🔄 Reinstanciar adapters cada vez con la config actualizada
-  ADAPTERS = {
-    aguante: new Aguante(byPlatform['aguante']),
-    playbet: new Playbet(byPlatform['playbet']), 
-    ganamos: new Ganamos(byPlatform['ganamos']),
-    buffalo: new Buffalo(byPlatform['buffalo']),
-  };
+  // Reinstanciar adapters solo para las plataformas válidas
+  ADAPTERS = {};
+  if (byPlatform['aguante']) ADAPTERS.aguante = new Aguante(byPlatform['aguante']);
+  if (byPlatform['playbet']) ADAPTERS.playbet = new Playbet(byPlatform['playbet']);
+  if (byPlatform['ganamos']) ADAPTERS.ganamos = new Ganamos(byPlatform['ganamos']);
+  if (byPlatform['buffalo']) ADAPTERS.buffalo = new Buffalo(byPlatform['buffalo']);
 
   return byPlatform;
 }
+
 
 async function doLoginOne(platformKey, confByPlatform) {
   const key = platformKey.toLowerCase();

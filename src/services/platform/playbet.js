@@ -160,6 +160,8 @@ class Playbet extends Base {
       };
 
       // Asegurar que existen antes de usarlos
+      await page.waitForSelector('app-deposit', { timeout: 10000 });
+      await page.waitForSelector('.repot_agen .form_sty', { timeout: 10000 });
       await page.waitForSelector(SEL.start, { timeout: 10000 });
       await page.waitForSelector(SEL.end, { timeout: 10000 });
       await page.waitForSelector(SEL.user, { timeout: 10000 });
@@ -169,7 +171,7 @@ class Playbet extends Base {
       // (Opcional pero recomendado) Seleccionar "CustomMonth" en el dropdown rápido (si existe), para no pisar fechas.
       const hasQuick = await page.$(SEL.quickRange);
       if (hasQuick) {
-        await page.select(SEL.quickRange, 'CustomMonth').catch(() => {});
+        await page.select(SEL.quickRange, 'CustomMonth').catch(() => { });
         await sleep(100);
       }
 
@@ -187,15 +189,15 @@ class Playbet extends Base {
       await userInput.type(String(usuario), { delay: 15 });
 
       // Estado
-      await page.select(SEL.status, estado).catch(() => {}); // usa el value tal cual está en el HTML
+      await page.select(SEL.status, estado).catch(() => { }); // usa el value tal cual está en el HTML
 
       // Enviar
       const btn = await page.$(SEL.submit);
       if (!btn) throw new Error('No encontré el botón Entregar.');
       await Promise.all([
-        btn.click().catch(() => {}),
+        btn.click().catch(() => { }),
         // Esperar algo razonable: red o render
-        page.waitForNetworkIdle({ idleTime: 800, timeout: 15000 }).catch(() => {})
+        page.waitForNetworkIdle({ idleTime: 800, timeout: 15000 }).catch(() => { })
       ]);
 
       // Intentar extraer resultados si hay una tabla dentro de app-deposit (no asumimos columnas específicas)
@@ -234,7 +236,7 @@ class Playbet extends Base {
         const rowsRaw = trs.map(tr => Array.from(tr.querySelectorAll('td')).map(getText)).filter(r => r.length);
 
         if (!headers.length && rowsRaw.length) {
-          headers = rowsRaw[0].map((_, i) => `col${i+1}`);
+          headers = rowsRaw[0].map((_, i) => `col${i + 1}`);
         }
 
         // Si cantidad coincide, mapear a objetos; si no, devolver arrays
@@ -256,7 +258,7 @@ class Playbet extends Base {
       throw err;
     } finally {
       // Cerrar browser aunque falle
-      try { await browser.close(); } catch (_) {}
+      try { await browser.close(); } catch (_) { }
     }
   }// src/services/platform/playbet.js
 
@@ -381,7 +383,7 @@ class Playbet extends Base {
         metodo: "puppeteer",
       };
     } finally {
-      await browser.close().catch(() => {});
+      await browser.close().catch(() => { });
     }
   }
 
